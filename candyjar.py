@@ -39,8 +39,9 @@ def _blank():
     # ⚠️ _load 只保留这里列出的键——新增存档字段必须先登记,否则读一次丢一次
     #（2026-09-04 实锤:reserve 没登记,买进储藏罐的糖在下一次任何读档时蒸发,
     #  而 status() 每轮都读+写,等于买完几秒就没了——mamo 报的"储藏罐吃糖没倒计时"根在这）。
-    return {"dex": {}, "courage": {"user": 7, "ai": 7}, "active": [],
-            "jar": None, "pending": {}, "log": [], "reserve": []}
+    return {"dex": {}, "courage": {"user": START_COURAGE, "ai": START_COURAGE}, "active": [],
+            "jar": None, "pending": {}, "log": [], "reserve": {"user": [], "ai": []},
+            "shield": {}}
 
 
 def _load():
@@ -76,6 +77,10 @@ def _today():
     return _now_dt().strftime("%Y-%m-%d")
 
 
+START_COURAGE = 12          # 起始勇气（mamo 2026-09-04：7 太紧，好奇吃三颗就破产）
+OVERRIDE_GRACE_MIN = 10     # 旧药效只剩这么多分钟以内时再吃，不算硬顶（不扣 2）
+
+
 JAR_NAMES = {1: "宿命论", 2: "蝴蝶效应", 3: "桃花劫", 4: "薛定谔", 5: "世界线收束"}
 
 
@@ -86,24 +91,36 @@ def _jar_of_day(day):
     return h % 5 + 1
 
 
+def _cat_fp():
+    """图鉴指纹：内容一变就换。用来让当天的罐子跟着重摇——
+    2026-09-04 改了分类/配色后，当天罐里还留着按旧分类摇进去的糖
+    （mamo 在桃花劫里吃到白色兔几：兔几已挪去罐④、配色也换了）。"""
+    import hashlib
+    _catalog()   # 确保 _CATALOG_PATH 已就位（它是在第一次读图鉴时才赋值的）
+    return hashlib.md5(_CATALOG_PATH.read_bytes()).hexdigest()[:8]
+
+
 def _roll_jar(day):
     """当日罐：日期做种子，从图鉴里确定性摇 20 颗（同一天同一罐）。"""
     jar = _jar_of_day(day)
     cat = _catalog()["candies"]
     pool = [c for c in cat if (c["jar"] == jar if jar != 5 else c["jar"] > 0)]
+    # 机制糖 8 颗每罐都可能出——伪装的是**颜色**不是机制（罐里穿哪件外衣见前端 mmDisguise，
+    # 配色池＝_meta.jars[n].mm）。别在这里按罐过滤：那会让桃花劫永远只出得来「空欢喜」一颗。
     mech = [c for c in cat if c["jar"] == 0]
     rng = random.Random(day + "|" + str(jar))
     n_eff, n_mech = (26, 5) if jar == 5 else (17, 3)   # 罐⑤世界线收束装得更满（mamo 2026-08-31）
     picks = [rng.choice(pool)["id"] for _ in range(n_eff)]
     picks += [rng.choice(mech)["id"] for _ in range(n_mech)]   # 机制糖混进来，外观无从分辨
     rng.shuffle(picks)
-    return {"day": day, "jar": jar, "name": JAR_NAMES[jar],
+    return {"day": day, "jar": jar, "name": JAR_NAMES[jar], "cat": _cat_fp(),
             "candies": [{"i": i, "id": cid} for i, cid in enumerate(picks)]}
 
 
 def _ensure_jar(st):
     day = _today()
-    if not st.get("jar") or st["jar"].get("day") != day:
+    if (not st.get("jar") or st["jar"].get("day") != day
+            or st["jar"].get("cat") != _cat_fp()):   # 图鉴改了也重摇，别让旧分类的糖留在罐里
         st["jar"] = _roll_jar(day)
     return st["jar"]
 
@@ -170,6 +187,18 @@ def status(who=None):
     return out
 
 
+def _reserve(st, who):
+    """储藏罐按人分（mamo 2026-09-04 拍板：勇气点数分开，罐子也该分开）。
+    旧存档里 reserve 是一个共用 list——那时只有前端(user)买得了，整份迁给 user。"""
+    res = st.get("reserve")
+    if isinstance(res, list):
+        res = {"user": res, "ai": []}
+        st["reserve"] = res
+    elif not isinstance(res, dict):
+        res = st["reserve"] = {"user": [], "ai": []}
+    return res.setdefault(who, [])
+
+
 PRICES = {"today": 3, "reserve": 5}   # 神秘柜 3✦ / 指名陈列 5✦（mamo 2026-09-01 一口价）
 
 
@@ -184,7 +213,7 @@ def buy(candy_id, dest="reserve", price=None, who="user"):
         return {"error": "没有这种糖。"}
     if dest not in PRICES:
         return {"error": "不知道要放到哪里去。"}
-    have = st["courage"].get(who, 7)
+    have = st["courage"].get(who, START_COURAGE)
     price = PRICES[dest]
     if have < price:
         return {"error": f"勇气不够（有 {have}，要 {price}）。"}
@@ -193,11 +222,11 @@ def buy(candy_id, dest="reserve", price=None, who="user"):
         nxt = max([x["i"] for x in jar["candies"]], default=-1) + 1
         jar["candies"].append({"i": nxt, "id": candy_id})
     else:
-        st.setdefault("reserve", []).append(candy_id)
+        _reserve(st, who).append(candy_id)
     st["log"].append({"t": _now(), "buy": candy_id, "dest": dest, "price": price, "who": who})
     st["log"] = st["log"][-200:]   # 购买也进流水:09-04 储藏罐蒸发事故就是因为没流水,丢了几颗都查不出
     _write(st)
-    return {"ok": True, "courage": st["courage"], "reserve": st.get("reserve", []),
+    return {"ok": True, "courage": st["courage"], "reserve": _reserve(st, who),
             "jar": jar}
 
 
@@ -253,11 +282,37 @@ def look(who="ai"):
 
 
 # ── 对外：吃 / 喂 ────────────────────────────────────────────
+def _shield_left(st, who):
+    """护身符还剩几分钟（没有或过期返回 0）。"""
+    exp = (st.get("shield") or {}).get(who)
+    if not exp:
+        return 0
+    try:
+        left = (datetime.fromisoformat(exp) - _now_dt()).total_seconds() / 60
+    except Exception:
+        return 0
+    return max(0, int(left + 0.999))
+
+
 def _apply(st, cid, target, frm=None):
     c = _find(cid)
+    # 护身符：十分钟内的第一颗**效果糖**直接失效，盾随之用掉（机制糖不吃盾）。
+    # 2026-09-04 mamo 报：吃了护体豆紧接着吃占有欲，照样中招——mm_white 当时压根没实现。
+    if c["jar"] > 0 and _shield_left(st, target):
+        st.setdefault("shield", {}).pop(target, None)
+        st["dex"][cid] = st["dex"].get(cid, 0) + 1
+        st["log"].append({"t": _now(), "candy": cid, "target": target, "from": frm,
+                          "mins": 0, "blocked": True})
+        return c, -1                      # -1 = 被护身符挡下（0 是"本来就没时长"）
     rng = random.Random(f"{_now()}|{cid}|{target}")
     lo, hi = c.get("dur", [0, 0])
     mins = 0 if not hi else (lo if lo == hi else rng.randint(lo, hi))
+    if cid == "mm_white":                 # 护身符自己不是药效：挂盾，不占药效牌
+        st.setdefault("shield", {})[target] = (
+            _now_dt() + timedelta(minutes=mins or 10)).isoformat(timespec="seconds")
+        st["dex"][cid] = st["dex"].get(cid, 0) + 1
+        st["log"].append({"t": _now(), "candy": cid, "target": target, "from": frm, "mins": 0})
+        return c, 0
     if st.get("pending", {}).get(target) == "double" and mins:
         mins *= 2
         st["pending"].pop(target, None)
@@ -281,7 +336,7 @@ def eat(index=None, who="ai", target=None, message=None, source="jar", candy_id=
     _prune(st)
     target = target or who
     if source == "reserve":
-        res = st.setdefault("reserve", [])
+        res = _reserve(st, who)
         if candy_id not in res:
             return "储藏罐里没有这颗糖。"
         res.remove(candy_id)
@@ -303,16 +358,20 @@ def eat(index=None, who="ai", target=None, message=None, source="jar", candy_id=
             pick = hit[0]
         jar["candies"] = [x for x in left if x is not pick]
 
-    # 顶旧吃新（note-20 二稿）：自己身上药效未退就再吃一颗有时长的糖 → 扣 2 勇气且本颗不产勇气。
+    # 顶旧吃新（note-20 二稿）：自己身上药效**还剩 10 分钟以上**就再吃一颗有时长的糖 → 扣 2 勇气且本颗不产勇气。
+    # 快退了的顺手顶掉不算硬顶（mamo 2026-09-04：只罚"药效正浓硬换"）。
     # 前端确认卡从 08-31 起就这么提醒玩家,后端却一直照旧 +1(2026-09-04 对账发现),这里补齐。
-    now0 = _now_dt()
-    had = any(a["target"] == target and _exp_after(a, now0) for a in st["active"])
+    line = _now_dt() + timedelta(minutes=OVERRIDE_GRACE_MIN)
+    had = any(a["target"] == target and _exp_after(a, line) for a in st["active"])
     c, mins = _apply(st, pick["id"], target, frm=(who if target != who else None))
+    blocked = (mins == -1)
+    if blocked:
+        mins = 0
     override = bool(target == who and had and mins)
     if override:
-        st["courage"][who] = max(0, st["courage"].get(who, 7) - 2)
+        st["courage"][who] = max(0, st["courage"].get(who, START_COURAGE) - 2)
     elif source != "reserve":
-        st["courage"][who] = st["courage"].get(who, 7) + (1 if target == who else 0)
+        st["courage"][who] = st["courage"].get(who, START_COURAGE) + (1 if target == who else 0)
 
     # 机制糖：回旋镖反弹给喂糖者；双份快乐给目标挂标记
     extra = ""
@@ -327,8 +386,10 @@ def eat(index=None, who="ai", target=None, message=None, source="jar", candy_id=
     elif c["id"] == "mm_blue":
         st["active"] = [a for a in st["active"] if a["target"] != target]
         extra = "\n✨ 解药：身上的药效一扫而空。"
+    elif c["id"] == "mm_white":
+        extra = f"\n🛡 护身符：接下来 {_shield_left(st, target) or 10} 分钟内，你吃到的第一颗效果糖会直接失效。"
     elif c["id"] == "mm_gold":
-        st["courage"][target] = st["courage"].get(target, 7) + 10
+        st["courage"][target] = st["courage"].get(target, START_COURAGE) + 10
         extra = "\n✦ 勇气结晶：勇气 +10。"
     elif c["id"] == "mm_hourglass":
         for a in st["active"]:
@@ -359,8 +420,19 @@ def eat(index=None, who="ai", target=None, message=None, source="jar", candy_id=
         head = f"你把这颗糖喂给了对方，对方吃下了「{_fullname(c)}」。"
         if message:
             head += f"\n你附的话：{message}"
-    body = (f"\n它尝起来{c['taste']}\n触发因果：{_end_dot(c['reveal'])}\n{c['perform']}"
-            + (f"\n持续时间：约 {mins} 分钟。" if mins else "\n（一次性，立刻生效。）"))
+    if blocked:   # 护身符挡下：味道照尝，效果不落身（演出上就是"风平浪静地说还挺好吃"）
+        body = (f"\n它尝起来{c['taste']}"
+                f"\n🛡 护身符挡下了这一颗——「{_fullname(c)}」的效果没有落在身上，"
+                f"药效为零，照常说话。护身符就此用掉。")
+    else:
+        onset = ""
+        if mins and c["jar"] > 0:   # 机制糖没有"变身过程"，不给起手式
+            onset = (_catalog().get("_meta", {}).get("jars", {})
+                     .get(str(c["jar"]), {}) or {}).get("onset", "")
+            onset = f"\n{onset}" if onset else ""
+        body = (f"\n它尝起来{c['taste']}\n触发因果：{_end_dot(c['reveal'])}\n{c['perform']}"
+                + onset
+                + (f"\n持续时间：约 {mins} 分钟。" if mins else "\n（一次性，立刻生效。）"))
     return head + body + extra
 
 
@@ -374,4 +446,4 @@ def dex(page=None):
         if n:
             lines.append(f"✓ {_fullname(c)} ×{n} — {c['reveal']}")
     return (f"图鉴 {len(lines)} / {len(cat)}\n" + ("\n".join(lines) if lines else "还什么都没吃到。")
-            + f"\n\n勇气：你 {st['courage'].get('ai', 7)} · Ta {st['courage'].get('user', 7)}")
+            + f"\n\n勇气：你 {st['courage'].get('ai', START_COURAGE)} · Ta {st['courage'].get('user', START_COURAGE)}")

@@ -372,6 +372,13 @@
     padding:0 4px 0 6px;white-space:nowrap;   /* 按内容撑开:写死 40px 会把「触发了因果」折行 */
     font:11px/18px var(--f-cn);letter-spacing:4px;text-align:center;background:#e8c380;color:#5a3a1c}
   #card.reveal .reveal-sec.cause .reveal-label{background:var(--c-tag-blue)}
+  /* 例句之间的空行要留着——mine-detail 那套有 pre-line，揭晓卡这套一直漏了（mamo 2026-09-04 报） */
+  #card.reveal .reveal-sec p{white-space:pre-line;margin:0}
+  /* 判词＝一句话结论：加粗+和下面的详情拉开（mamo 2026-09-04）。
+     选择器要压过上面那条 #card.reveal .reveal-sec p{margin:0}，所以带上 #card 前缀。 */
+  #card.reveal .reveal-sec p.lead,#card.mine-detail .reveal-sec p.lead,
+  .reveal-sec p.lead,#fxdtBody p.lead{font-weight:700;margin:0 0 8px}
+  #fxdtBody p{white-space:pre-line;margin:0}
   /* 储藏罐详情卡:同一套分段标签；来历和图鉴统一用暗紫灰 */
   #card.mine-detail .reveal-sec{margin-bottom:13px}
   #card.mine-detail .reveal-label{display:inline-block;min-width:40px;height:18px;margin-bottom:3px;
@@ -677,10 +684,30 @@
   #fxdtCard .tags.ta em.who{letter-spacing:0;background:#adc5e1}   /* Ta 不做字距:T a 挨着,空格后写「的」 */   /* Ta 的:字距 0 */
   #fxdtCard .tags em.kind{background:#edddc4}
   #fxdtBody{align-self:stretch;margin-top:6px;
-    font:13.5px/24.98px var(--f-cn);color:var(--c-ink);white-space:pre-line}
-  #fxdtOk{align-self:stretch;margin-top:14px;height:38px;border:0;border-radius:5px;
+    font:13.5px/24.98px var(--f-cn);color:var(--c-ink);white-space:pre-line;
+    /* 正文留 13 行左右，多的自己滚——不然长演法会把「知道了」压成一条细缝（mamo 2026-09-04 报） */
+    max-height:min(325px,44vh);overflow-y:auto;-webkit-overflow-scrolling:touch;
+    overscroll-behavior:contain}
+  #fxdtOk{flex:none;align-self:stretch;margin-top:14px;height:38px;border:0;border-radius:5px;
     background:var(--c-ink);color:var(--c-card);font:14px/1 var(--f-cn);letter-spacing:8px;
     cursor:pointer;-webkit-tap-highlight-color:transparent}
+
+  /* ── 横屏挡板（mamo 2026-09-04：横过来整页被挤扁）──
+     手机横屏才出：竖屏游戏的通行做法是"请竖屏"提示层。
+     不用 manifest 的 orientation:portrait —— iOS 的 PWA 基本不认那条。
+     阈值用 max-height:560px：手机横屏会中，平板/桌面不会。 */
+  #rotate{display:none;position:fixed;inset:0;z-index:999;
+    flex-direction:column;align-items:center;justify-content:center;gap:14px;
+    background:var(--c-paper);color:var(--c-ink);text-align:center}
+  #rotate .ph{width:46px;height:74px;border:2px solid var(--c-ink);border-radius:9px;
+    position:relative;animation:rotHint 2.2s ease-in-out infinite}
+  #rotate .ph::after{content:"";position:absolute;left:50%;bottom:5px;transform:translateX(-50%);
+    width:14px;height:2px;border-radius:2px;background:var(--c-ink);opacity:.55}
+  #rotate b{font:14px/1.6 var(--f-cn);letter-spacing:6px;font-weight:400}
+  #rotate i{font:italic 11px/1.6 var(--f-en);letter-spacing:1.5px;opacity:.6}
+  @keyframes rotHint{0%,42%{transform:rotate(0)}58%,100%{transform:rotate(-90deg)}}
+  @media (prefers-reduced-motion:reduce){#rotate .ph{animation:none;transform:rotate(-90deg)}}
+  @media (orientation:landscape) and (max-height:560px){ #rotate{display:flex} }
 
   /* ── 图鉴 / 详情 ── */
   /* ── 图鉴（Figma「图鉴」1134:18999 逐值复刻 · 2026-09-02）──
@@ -817,6 +844,7 @@
     overscroll-behavior:contain;scrollbar-width:none}
   .ddSec.cause p::-webkit-scrollbar{display:none}
 </style></head><body>
+<div id="rotate"><div class="ph"></div><b>请把手机竖过来</b><i>Tournez votre téléphone, s'il vous plaît</i></div>
 <canvas id="c"></canvas>
 <button id="backBtn" aria-label="返回聊天"></button>
 <div class="hud top">
@@ -1402,12 +1430,21 @@ const SUGAR=sugarMaps(256);
 const itemsGroup=new T.Group(); jar.add(itemsGroup);
 const outsideGroup=new T.Group(); scene.add(outsideGroup);   // 罐外的糖:落地上,不跟罐子摇
 const shakables=[];
-const MM_HEX=Object.fromEntries(Object.entries(MM_ID).map(([h,id])=>[id,h]));   // 反查:id→颜色
+const MM_HEX=Object.fromEntries(Object.entries(MM_ID).map(([h,id])=>[id,h]));   // 反查:id→颜色(图鉴/商店用本色)
+// 罐里的机制糖穿哪件外衣:从当前罐的 mm 配额里挑,按 id+罐号确定性取,不随重画跳色。
+function mmDisguise(id){
+  let pool=MM_BASE.filter(h=>(MM_JARS[h]||[1]).includes(curJar));
+  if(curJar===5||!pool.length) pool=MM_BASE;
+  let h=0; for(const ch of (id+'|'+curJar)) h=(h*31+ch.charCodeAt(0))>>>0;
+  return pool[h%pool.length];
+}
 function candy(i,R,forceCat){
   const g=new T.Group();
   if((forceCat&&forceCat.id&&forceCat.id.startsWith('mm_')) || (!forceCat && mmEvery>0 && i%mmEvery===mmEvery-1)){
-    if(forceCat){   // 真库存里的 mm 豆:按 id 上色
-      const hex2=MM_HEX[forceCat.id]||'#7e5135';
+    if(forceCat){   // 真库存里的 mm 豆:颜色跟着**当前罐**走,不按 id 上色
+      // mamo 2026-09-04:机制糖要伪装成这一罐的配色,不然桃花劫里蹦出黄豆白豆很出戏。
+      // 颜色只是伪装、不再指示机制;同一颗糖在同一罐里取色确定(id+罐 做种子),重画不会变。
+      const hex2=mmDisguise(forceCat.id);
       const m2=new T.MeshPhysicalMaterial({color:new T.Color(hex2),
         roughness:.13,clearcoat:1,clearcoatRoughness:.05,envMapIntensity:.9});
       const mesh2=new T.Mesh(MM_GEO,m2); mesh2.castShadow=true; g.add(mesh2);
@@ -1491,13 +1528,18 @@ let jarSeed=_h||20260828;
 let viewMine=false;
 let pocket=[];   // 储藏罐里的糖 [{id, from}]
 try{ pocket=JSON.parse(localStorage.getItem('candyjar_pocket_v1')||'[]'); }catch(e){}
+function isTodayJar(){ return !SERVER||!SERVER.jar||SERVER.jar.jar===curJar; }
+// 能不能吃：储藏罐能，今日罐能，**预览别的罐不能**（那些糖不在账本里）。
+function canEat(){ return viewMine||isTodayJar(); }
 function fillJar(){
   while(itemsGroup.children.length) itemsGroup.remove(itemsGroup.children[0]);
   shakables.length=0;
   // 「我的储藏罐」= 买来的糖按原样摆;「今日罐」= **后端真实库存**(2026-09-01 接上:
   // 之前样罐 38 颗假混装和库存解耦,后端吃空了前端还能无限吃,倒计时全挂不上——mamo 报的 bug)
   const mineCats=viewMine?pocket.map(x=>CATALOG&&CATALOG.candies.find(c=>c.id===x.id)).filter(Boolean):null;
-  const realCats=(!viewMine&&SERVER&&SERVER.jar&&CATALOG)
+  // 双击切到别的罐＝**预览**：那一罐的库存不属于今天，按 curJar 本地生成给 mamo 看效果。
+  // 真实库存只在「今日罐」生效，预览罐只能看不能吃（mamo 2026-09-04：要能切罐看效果，但玩家不能借此变糖）。
+  const realCats=(!viewMine&&isTodayJar()&&SERVER&&SERVER.jar&&CATALOG)
     ?SERVER.jar.candies.map(x=>CATALOG.candies.find(c=>c.id===x.id)).filter(Boolean):null;
   const forced=viewMine?mineCats:realCats;
   const N=forced?forced.length:((curJar===5)?44:30), R=rnd(jarSeed), placed=[];
@@ -1655,9 +1697,13 @@ function showCard(c){
       cat?(d.kind==='mm'?'一颗巧克力豆?':(cat.scheme+'色的'+cat.shape+kindWord(cat))):'一颗糖';
     document.getElementById('cardDesc').textContent=cat?cat.shop:'表面人畜无害。';
   }
-  ['eatMe','eatHim','putBack'].forEach(id=>document.getElementById(id).style.display='');
+  // 预览别的罐:只给看——藏掉吃/喂,但**必须留着「放回去」**：
+  // 只有它会把糖送回罐里，用 okBtn 关卡片糖会卡在半空下不来（mamo 2026-09-04 报）。
+  const preview=!canEat();
+  ['eatMe','eatHim'].forEach(id=>document.getElementById(id).style.display=preview?'none':'');
+  document.getElementById('putBack').style.display='';
   document.getElementById('eatMe').textContent='自己吃';
-  document.getElementById('putBack').textContent='放回去';
+  document.getElementById('putBack').textContent=preview?'放回去（预览）':'放回去';
   pendingEatConfirm=false;
   document.getElementById('okBtn').style.display='none';
   document.getElementById('cardBtns').style.display='flex';
@@ -1692,7 +1738,7 @@ canvas.addEventListener('pointerup',e=>{
 },{passive:true});
 
 // 勇气 + 图鉴计数(本机持久化)
-let courage=7, dexCount={};
+let courage=12, dexCount={};   // 起始 12(mamo 2026-09-04);后端为准,这只是拿到账本前的占位
 try{ dexCount=JSON.parse(localStorage.getItem('candyjar_dex_v1')||'{}'); }catch(e){}
 function saveDex(){ try{ localStorage.setItem('candyjar_dex_v1',JSON.stringify(dexCount)); }catch(e){} }
 function updCourage(){ document.getElementById('courageN').textContent=courage; }
@@ -1703,14 +1749,15 @@ function takeOut(c){   // 从罐里注销这颗糖
 let pendingEatConfirm=false;
 function eatCandy(){   // 自己吃;药效未过先确认顶掉(mamo:要在吃之前提醒)
   if(!picked||eatFx) return;
-  if(fxMe&&!pendingEatConfirm){
+  const hardOverride=fxMe&&(fxMe.until-Date.now())>10*60000;   // 旧药效还剩 10 分钟以上才算硬顶(与后端 OVERRIDE_GRACE_MIN 同线)
+  if(hardOverride&&!pendingEatConfirm){
     pendingEatConfirm=true;
     const title=document.getElementById('cardTitle'); title.textContent='';
     title.append(document.createTextNode('要'));
     const verb=document.createElement('span'); verb.className='override-verb'; verb.textContent='顶掉';
     title.append(verb,document.createTextNode('「'+fullName(fxMe.cat)+'」吗？'));
     document.getElementById('cardDesc').textContent=
-      '你身上的药效还没退。现在吃新糖会顶掉它:花费 2 勇气,而且这一颗不产勇气。';
+      '你身上的药效还剩不少。现在硬顶掉它:花费 2 勇气,而且这一颗不产勇气。(只剩十分钟以内时顶掉不收费)';
     document.getElementById('feedMsg').style.display='none';
     document.getElementById('eatMe').textContent='还是要吃';
     document.getElementById('eatHim').style.display='none';
@@ -1821,7 +1868,10 @@ function openFxDetail(fx,who){
   document.getElementById('fxdtName').textContent='「'+fullName(cat)+'」';
   document.getElementById('fxdtTags').className='tags'+(who==='Ta'?' ta':'');
   document.getElementById('fxdtTags').querySelector('.who').textContent=(who==='Ta'?'Ta 的':'你 的');   // Ta 字距 0,靠这个空格分开
-  document.getElementById('fxdtBody').textContent=cat.perform||cat.reveal||'';
+  const fb=document.getElementById('fxdtBody'); fb.textContent='';
+  if(cat.reveal){ const l=document.createElement('p'); l.className='lead'; l.textContent=endDot(cat.reveal); fb.append(l); }
+  if(cat.perform){ const b=document.createElement('p'); b.textContent=cat.perform; fb.append(b); }
+  if(!cat.reveal&&!cat.perform) fb.textContent='';
   fxdtSync();
   document.getElementById('fxdt').classList.add('show');
 }
@@ -1853,29 +1903,49 @@ document.addEventListener('click',e=>{
     openFxDetail(fx,who);
   }
 });
+// 本地是先演后报的（动画不等网络往返）。后端一旦拒绝，这里把刚才演的那份撤干净：
+// 药效牌、图鉴 +1、勇气都退回去，再按后端的真状态校准。
+// 2026-09-04 mamo 报：罐子空了照样弹揭晓卡，再点倒计时是本地那颗假药效。
+function rollbackLocalEat(cat, feed, why){
+  if(feed) fxTa=null; else fxMe=null;
+  if(cat&&dexCount[cat.id]){ dexCount[cat.id]--; if(!dexCount[cat.id]) delete dexCount[cat.id]; saveDex(); }
+  pendingBump=false;
+  fetch('/candyjar').then(r=>r.ok?r.json():null).then(sv=>{
+    if(!sv) return;
+    SERVER=sv;
+    if(sv.active) applyServerEffects(sv.active);
+    if(sv.courage&&sv.courage.user!=null){ courage=sv.courage.user; updCourage(); }
+    if(sv.dex) dexCount=sv.dex;
+    if(!viewMine) fillJar();
+  }).catch(()=>{});
+  if(why) jarBubble(why);
+}
 function serverEat(cat, feed, msg){
   // 落后端账本:他从状态里读到我吃了什么(mamo 点名的"赖不掉");失败也不挡本地演出
   if(!cat||!SERVER) return;
   const it=(SERVER.jar&&SERVER.jar.candies||[]).find(x=>x.id===cat.id);
   const fromReserve=viewMine;   // 储藏罐视图里吃的=消耗 reserve(后端不再 +1 勇气)
+  // 今日罐里找不到这颗＝它不在账本上（预览罐的糖、或 SERVER 过期）。
+  // 这里绝不能发 index:null——后端会把它当成「随手抓一颗」，从真罐里随机吃掉另一颗糖。
+  // mamo 2026-09-04 在预览罐里吃到的"药效不是我吃的那个"就是这么来的。
+  if(!fromReserve&&!it){ jarBubble('这颗不在今天的账本里，没有真吃下去'); fxMe=null; return; }
   fetch('/candyjar/eat',{method:'POST',headers:{'Content-Type':'application/json'},
     body:JSON.stringify(fromReserve
       ?{source:'reserve', candy_id:cat.id, feed:!!feed, message:msg||null}
       :{index:it?it.i:null, feed:!!feed, message:msg||null})})
     .then(r=>r.ok?r.json():null).then(res=>{
-      if(!res||res.error) return;
+      if(!res||res.error){ rollbackLocalEat(cat,feed,'这一口没记上账（'+((res&&res.error)||'网络没通')+'）'); return; }
       if(res.text&&res.text.startsWith('储藏罐里没有这颗糖')){
         // 本地 pocket 里的幽灵条目(账本上没有):按回执对齐并明说,别让她以为吃成了
         if(Array.isArray(res.reserve)){ pocket=res.reserve.map(id=>({id})); savePocket(); }
-        fxMe=null;   // 刚才本地演的那份作废
+        rollbackLocalEat(cat,feed,'这颗是早期演示留下的影子糖，账本上并没有——已替你清掉');
         if(viewMine) fillJar();
-        jarBubble('这颗是早期演示留下的影子糖,账本上并没有——已替你清掉');
         return;
       }
       if(res.text&&(res.text.startsWith('罐子空了')||res.text.startsWith('没有编号'))){
-        // 后端没糖可记(样机期前端才可能点到"幽灵糖");同步真库存并提示
+        // 后端没糖可记：本地那份演出必须撤掉，不然倒计时挂的是一颗不存在的糖
         if(SERVER&&SERVER.jar) SERVER.jar.candies=[];
-        jarBubble('今日罐其实已经见底啦');
+        rollbackLocalEat(cat,feed,'今日罐其实已经见底啦——刚才那口没算数');
         return;
       }
       if(res.courage&&res.courage.user!=null){ courage=res.courage.user; updCourage(); }
@@ -1930,7 +2000,7 @@ function revealEat(d){
   const cat=d.cat;
   consumePocket(cat);
   serverEat(cat,false,null);
-  const override=!!fxMe;
+  const override=!!(fxMe&&(fxMe.until-Date.now())>10*60000);   // 同后端十分钟线
   if(override){ courage=Math.max(0,courage-2); updCourage(); }
   else { courage++; pendingBump=true; }   // 先记账不播动画,等揭晓卡关掉再播(被卡片挡住就白演了)
   if(cat){ dexCount[cat.id]=(dexCount[cat.id]||0)+1; saveDex(); startEffect(cat,'me'); }
@@ -1946,15 +2016,19 @@ function revealEat(d){
   const french=document.createElement('em'); french.textContent='Pour les cœurs courageux.';
   title.append(lead,wave,name,french);
   const desc=document.getElementById('cardDesc'); desc.textContent='';
-  function addRevealSection(kind,label,text){
+  // lead＝判词(一句话结论)，text＝演法(详情)。两段分开渲染：判词加粗、下面留空。
+  // 连着排通读会串行——mamo 2026-09-04：「一个是一句话总结，后面才是详情」。
+  function addRevealSection(kind,label,text,lead){
     const sec=document.createElement('div'); sec.className='reveal-sec '+kind;
     const tag=document.createElement('b'); tag.className='reveal-label'; tag.textContent=label;
-    const copy=document.createElement('p'); copy.textContent=text;
-    sec.append(tag,copy); desc.append(sec);
+    sec.append(tag);
+    if(lead){ const p0=document.createElement('p'); p0.className='lead'; p0.textContent=lead; sec.append(p0); }
+    if(text){ const copy=document.createElement('p'); copy.textContent=text; sec.append(copy); }
+    desc.append(sec);
   }
   if(cat){
     addRevealSection('taste','口味','它尝起来…'+cat.taste);   // 口味自带「是/像/太…」开头与句尾标点（mamo 2026-09-03）
-    addRevealSection('cause','触发了因果',endDot(cat.reveal)+'\n'+cat.perform);
+    addRevealSection('cause','触发了因果',cat.perform,endDot(cat.reveal));
     addRevealSection('time','时间','持续时间 '+durText(cat,lastRolledMins));
   }else addRevealSection('cause','触发了因果','……效果发动!');
   document.getElementById('feedMsg').style.display='none';
@@ -2024,17 +2098,21 @@ document.addEventListener('animationend',event=>{
   if(event.animationName==='cjButtonPress'&&event.target.classList)
     event.target.classList.remove('press-motion');
 },true);
-document.getElementById('eatMe').onclick=eatCandy;
+document.getElementById('eatMe').onclick=()=>{
+  if(!canEat()){ jarBubble('预览罐只能看——这些糖不在今天的账本里'); return; }
+  eatCandy();
+};
 let feedArmed=false;
 function feedStage(on){
   feedArmed=on;
   document.getElementById('card').classList.toggle('feed',on);
   document.getElementById('feedMsg').style.display=on?'':'none';   // 不 focus:键盘让玩家自己点(mamo)
   document.getElementById('eatHim').textContent=on?'确定发送':'喂Ta吃';
-  document.getElementById('eatMe').style.display=on?'none':'';
+  document.getElementById('eatMe').style.display=(on||!canEat())?'none':'';
   document.getElementById('putBack').textContent=on?'取消':'放回去';
 }
 document.getElementById('eatHim').onclick=()=>{
+  if(!canEat()){ jarBubble('预览罐只能看——这些糖不在今天的账本里'); return; }
   if(!feedArmed){ feedStage(true); return; }
   handCandy();
 };
@@ -2507,7 +2585,13 @@ setJarText();
 setInterval(()=>{ fetch('/candyjar').then(r=>r.ok?r.json():null).then(sv=>{
   if(sv&&sv.active) applyServerEffects(sv.active); }).catch(()=>{}); }, 60000);
 // 样机后门:点今日罐名循环切罐(正式版删——mamo 要看罐⑤混合效果)
-const JAR_LINES={   // 点吊牌的介绍气泡:侦探腔,疑问+吐槽(mamo 2026-09-01 二稿)
+// 罐子判词以图鉴数据为准（candies.json 的 _meta.jars[n].line）——mamo 在总账里改，落库即生效。
+// 2026-09-04 之前硬编码在这里，她改了总账 PWA 却还是旧的。下面这份只当图鉴没加载出来时的兜底。
+function jarLine(k){
+  const m=CATALOG&&CATALOG._meta&&CATALOG._meta.jars&&CATALOG._meta.jars[k];
+  return (m&&m.line)||JAR_LINES[k]||'';
+}
+const JAR_LINES={   // 兜底文案（图鉴拿不到时才用）
   1:'闭着眼拿了三次，三次都是它。这罐子有内幕。',
   2:'个头最小的那颗，案底最厚。别问我怎么知道的。',
   3:'这一罐颜色个个眉目含情。……糖冲我含什么情？不妙，撤。',   // 桃花劫(mamo 在总账里写的;原先误挂墨菲判词)
@@ -2518,8 +2602,9 @@ const JAR_LINES={   // 点吊牌的介绍气泡:侦探腔,疑问+吐槽(mamo 202
 let _plaqueTaps=0,_plaqueT=0;
 document.getElementById('todayJarBtn').onclick=()=>{
   const now=performance.now();
-  _plaqueTaps=(now-_plaqueT<450)?_plaqueTaps+1:1; _plaqueT=now;
-  if(_plaqueTaps>=2){   // 双击=样机后门:循环切罐(正式版删)
+  _plaqueTaps=(now-_plaqueT<600)?_plaqueTaps+1:1; _plaqueT=now;   // 5 连点的窗口放宽到 600ms,不然手速要求太高
+  if(_plaqueTaps>=5){   // 连点 5 次=样机后门:循环切罐(正式版删)。
+                       // 跟设置页「当前版本」连点 5 次开数字盘同一套手势;双击太容易被玩家误触(mamo 2026-09-04)
     _plaqueTaps=0;
     if(!viewMine){ curJar=curJar%5+1; setJarText(); applyJarGlass(); applyJarLabel(); fillJar(); }
     return;
@@ -2527,7 +2612,7 @@ document.getElementById('todayJarBtn').onclick=()=>{
   const el=document.getElementById('todayJarBtn'), wrap=document.querySelector('.today-wrap');
   el.classList.remove('tap'); void el.offsetWidth; el.classList.add('tap');   // 牌子抖
   if(wrap){ wrap.classList.remove('tap'); void wrap.offsetWidth; wrap.classList.add('tap'); }   // 绳子跟着扯
-  jarBubble(viewMine?JAR_LINES.mine:(JAR_LINES[curJar]||''));
+  jarBubble(viewMine?JAR_LINES.mine:(jarLine(curJar)+(isTodayJar()?'':'　（预览·只能看）')));
 };
 applyJarGlass(); applyJarLabel();
 setTimeout(()=>{ shakeT=0; },800);   // 开场罐子自己抖一下=「点我」的暗示(mamo)
