@@ -1,0 +1,2912 @@
+<!doctype html><html lang="zh"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<title>因果律软糖罐 · Causality Candy Jar</title>
+<style>
+  @font-face{font-family:"MamoWenKai";src:url('./assets/fonts/MamoWenKai-sub.woff2') format('woff2');
+    font-weight:400;font-style:normal;font-display:swap}
+  @font-face{font-family:"PlayfairLocal";src:url('./assets/fonts/PlayfairDisplay-latin.woff2') format('woff2');
+    font-weight:400 900;font-style:normal;font-display:swap}
+  @font-face{font-family:"PlayfairLocal";src:url('./assets/fonts/PlayfairDisplay-Italic-latin.woff2') format('woff2');
+    font-weight:400 900;font-style:italic;font-display:swap}
+  @font-face{font-family:"CaveatLocal";src:url('./assets/fonts/Caveat-latin.woff2') format('woff2');
+    font-weight:400 700;font-style:normal;font-display:swap}
+  /* ══ 因果律软糖罐 · 法式轻奢皮（mamo Figma「法式轻奢02」1051:7457，2026-08-31 换皮）
+     数值全部取自 Dev Mode 真值，不靠眼估：色板见 --c-*，字号/圆角/间距同步 Figma 变量。 ══ */
+  :root{
+    --land-ease:cubic-bezier(.2,1,.3,1);
+    --c-paper:#f7ead7;        /* color/grey/91 底 */
+    --c-card:#fcf5e6;         /* color/grey/95 卡片 */
+    --c-card2:#fbf5e9;        /* color/grey/95 3 */
+    --c-ink:#3b2a18;          /* color/orange/16 正文 */
+    --c-ink2:#5b4a36;         /* color/orange/28 次级 */
+    --c-mute:#a8845a;         /* color/orange/51 弱字 */
+    --c-line:#e4d5b8;         /* color/orange/81 描边 */
+    --c-line2:#cdbb9a;        /* color/orange/70 */
+    --c-orange:#d06a2e;       /* color/orange/50 主橙 */
+    --c-blue:#6b8cb8;         /* color/azure/57 */
+    --c-tag-blue:#b9cbdd;     /* 商店吊牌 */
+    --c-tag-orange:#ec9a68;   /* 图鉴吊牌 */
+    --c-tag-gold:#edc783;     /* 勇气吊牌 */
+    --c-btn-gold:#eecb8e;
+    --c-btn-blue:#a2bcd7;
+    --r-card:16px; --r-sheet:28px; --r-tag:5px;
+    --halftone-lift:-92px;   /* 选糖时先留半截网点；mamo 拍全收/少收时只调这一项 */
+    --f-cn:"MamoWenKai","LXGW WenKai","PingFang SC",serif;
+    --f-en:"PlayfairLocal","Playfair Display",Georgia,serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  /* 界面文字一律不可选（mamo 2026-09-02 提）：这页整个是游戏界面，按钮名、标题、糖果说明都不是
+     "拿去用"的文本；长按选中只会弹出 iOS 那条「拷贝/查询/翻译」菜单，把玩的手感打断。
+     `-webkit-touch-callout:none` 连长按的放大镜与浮层一起掐掉。
+     **输入框单独放行**——不放行就没法选词、没法定位光标（主应用那边相反：聊天正文必须能复制，
+     所以那边是按需局部禁用，不是整页禁用）。 */
+  html{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+  input,textarea{-webkit-user-select:text;user-select:text;-webkit-touch-callout:default}
+  button:focus,button:focus-visible{outline:none}   /* 点击黑白框全删(mamo:要么真特效要么没有) */
+  html,body{height:100%;overflow:hidden;background:var(--c-paper);
+    font:14px/1.6 var(--f-cn);-webkit-text-size-adjust:100%;color:var(--c-ink);
+    -webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
+  body{border:1px solid var(--c-line);border-radius:28px;
+    box-shadow:0 10px 30px rgba(74,50,34,.08)}
+  /* ── 电脑浏览器里的最大宽度（mamo 2026-09-02）────────────────────────
+     一般网站的做法是「容器 max-width + margin:0 auto」（主应用 #app 就是 780px 那条）。
+     这页用不了那招：整套控件都是 position:fixed 直接贴视口的，fixed 的参照物是视口不是父元素，
+     给容器加宽度它们照样铺满一整屏。
+     所以改成给 body 一个 transform —— **只要 transform 不是 none，它就成为所有 fixed 后代的包含块**，
+     整台"手机"连同弹窗浮层一起被收进这条 430px 的柱子里居中（430 = 目前最宽的 iPhone，
+     等于沿用已经量过的那套排版，不必为桌面另调一遍）。
+     卡在 min-width:520px：手机与 PWA 竖屏（最宽 440）永远进不来，iOS 那套几何一行没动。 */
+  @media (min-width:520px){
+    html{background:var(--c-line)}          /* 柱子外面留一圈更深的纸色，衬出中间这张纸 */
+    body{width:430px;margin:0 auto;transform:translate(0);
+      box-shadow:0 12px 44px rgba(74,50,34,.18)}
+  }
+  body::after{content:"";position:fixed;inset:8px;z-index:3;pointer-events:none;   /* 装饰画框:在底图(网点2)之上、控件(5+)之下 */
+    border:1px solid rgba(118,78,44,.9);border-radius:20px}
+  /* 网点半调背景（Figma bg-paper，径向淡出） */
+  /* 网点墙纸:只铺在招牌区那一段(罐子那块交给 3D 背景球,否则玻璃会把 DOM 层的网点"吃"不进折射) */
+  /* 半调点阵(2026-08-31 定稿方案):颜色 #EAD6B7 与四边淡出都**烤进 halftone-tint.png**,
+     CSS 只做普通背景图——之前三层 mask+composite 在 Safari 上反复出怪相(色框/圆斑/接缝),
+     根因都是遮罩层间合成行为不可靠。成品图没有任何运行时合成,不可能再出。 */
+  body::before{content:"";position:fixed;left:-12px;right:-9px;top:-38px;height:380px;z-index:2;pointer-events:none;
+    background:url('./assets/candyjar/ui/halftone-tint.png') center -188px / 500px 500px no-repeat;
+    transition:background-position .55s cubic-bezier(.22,1,.36,1)}
+  body.showcase::before{background-position:center -280px}
+  #c{position:fixed;inset:0;display:block;width:100%;height:100%;touch-action:none;z-index:1}
+
+  /* ── 招牌区 ── */
+  .hud{position:fixed;left:0;right:0;pointer-events:none;text-align:center;z-index:4}
+  .hud.top{top:48px;height:244px}   /* mamo:整包上移 10px */
+  .hud.top>*{transition:transform .48s cubic-bezier(.22,1,.36,1),opacity .18s ease;
+    will-change:transform,opacity}
+  .hud.top .kicker{font:10.5px/1 var(--f-cn);letter-spacing:5px;color:var(--c-ink);opacity:.6;
+    margin-top:1px;transition-delay:.15s}   /* 蓝框整包上移 5(mamo 08-31) */
+  .hud.top .causality{margin-top:16px;font:500 15px/1 var(--f-en);letter-spacing:8px;color:var(--c-ink);transition-delay:.12s}
+  .hud.top .jarTitle{margin-top:2px;   /* 红框(Candy Jar+波浪)再上移 5 */font:italic 500 44px/1 var(--f-en);color:var(--c-ink);transition-delay:.09s}
+  .hud.top .wave{display:block;width:165px;height:12px;margin:5px auto 0;   /* +3px:原来比 Figma 靠上 */opacity:1;
+    background:url('./assets/candyjar/ui/title-wave.svg') center/100% 100% no-repeat;transition-delay:.06s}
+    .hud.top .cn{margin-top:16px;   /* +10 补偿上面两次上移:匾额自身位置不动(mamo 只要标题动) */font:14px/26px var(--f-cn);   /* 行高微调:字在匾额上下居中(mamo 报偏上) */letter-spacing:7px;color:var(--c-ink);
+    display:inline-block;width:139px;height:26px;padding-left:7px;
+    background:url('./assets/candyjar/ui/cn-plaque.svg') center/100% 100% no-repeat;transition-delay:.03s}
+  /* 今日罐吊牌（椭圆纸签） */
+  .today-wrap{position:relative;width:129px;height:93px;margin:1px auto 0;transition-delay:0s}
+  /* 挂绳：拆成左右两根独立元素才能各自拉伸——顶端藏在匾额后面不动，
+     只有下端跟着牌子被扯（mamo 给的 left-rope/right-rope 两条轨，scaleY 就是"绳被拉长"）。 */
+  .today-wrap i.rope{position:absolute;z-index:-1;display:block;pointer-events:none;
+    transform-origin:top center;background-size:100% 100%;background-repeat:no-repeat}
+  .today-wrap i.rope.l{left:29px;top:-15px;width:9px;height:27px;
+    background-image:url('./assets/candyjar/ui/rope-left.svg');
+    animation:ropeDrop .35s var(--land-ease) .30s both,ropeL 1.10s ease .68s both}
+  .today-wrap i.rope.r{left:88px;top:-15px;width:12px;height:25px;
+    background-image:url('./assets/candyjar/ui/rope-right.svg');
+    animation:ropeDrop .35s var(--land-ease) .30s both,ropeR 1.10s ease .68s both}
+  @keyframes ropeDrop{0%{translate:0 -300px}100%{translate:0 0}}
+  /* 拉扯：牌子砸到底那一刻绳被抻到 1.5 倍，再回弹（mamo 的关键帧原值，时间轴按 1.48s 归一） */
+  @keyframes ropeL{
+    0%{transform:translateY(8px) scaleY(1.5) rotate(-3deg)}      /* .68s 被抻到最长 */
+    27.3%{transform:translateY(-3px) scaleY(.85) rotate(2.5deg)} /* .98s */
+    54.5%{transform:translateY(2px) scaleY(1.12) rotate(-1.5deg)}/* 1.28s */
+    81.8%{transform:translateY(-.5px) scaleY(.95) rotate(.5deg)} /* 1.58s */
+    100%{transform:translateY(0) scaleY(1) rotate(0deg)}}
+  @keyframes ropeR{
+    0%{transform:translateY(7px) scaleY(1.45) rotate(2.5deg)}
+    24.5%{transform:translateY(-2.5px) scaleY(.88) rotate(-2deg)}
+    48.2%{transform:translateY(1.5px) scaleY(1.1) rotate(1.2deg)}
+    79.1%{transform:translateY(-.5px) scaleY(.96) rotate(-.5deg)}
+    100%{transform:translateY(0) scaleY(1) rotate(0deg)}}
+  /* 点击：绳子跟着牌子抖（她的 52.24%~57.24% 那段） */
+  .today-wrap.tap i.rope.l{animation:ropeTapL .62s ease both}
+  .today-wrap.tap i.rope.r{animation:ropeTapR .62s ease both}
+  @keyframes ropeTapL{
+    0%{transform:translateY(0) scaleY(1) rotate(0deg)}
+    21%{transform:translateY(2px) scaleY(1.1) rotate(-2deg)}
+    63%{transform:translateY(-.5px) scaleY(1) rotate(1deg)}
+    100%{transform:translateY(0) scaleY(1) rotate(0deg)}}
+  @keyframes ropeTapR{
+    0%{transform:translateY(0) scaleY(1) rotate(0deg)}
+    24%{transform:translateY(1.8px) scaleY(1.08) rotate(1.8deg)}
+    66%{transform:translateY(-.5px) scaleY(1) rotate(-.8deg)}
+    100%{transform:translateY(0) scaleY(1) rotate(0deg)}}
+  .hud.top .cn{position:relative;z-index:1}   /* 匾额压住挂绳(mamo:绳子跑到前面了) */
+  #todayJarBtn{position:relative;display:block;width:129px;height:90px;margin:0 auto;padding:0;
+    border:0;background:url('./assets/candyjar/ui/today-fill.svg') center/124px 86px no-repeat;
+    font-family:var(--f-cn);color:var(--c-ink);pointer-events:auto;cursor:pointer;
+    rotate:-3deg;   /* 独立属性:掉落(translate)与摆动(rotate)分两轨,同 Figma 的双轨导出 */
+    animation:plaqueDrop 1.45s linear .33s both,plaqueSwing 1.45s linear .33s both}
+  /* 掉落：冲过头 18px 再回弹收住（Figma translate 轨原值） */
+  @keyframes plaqueDrop{
+    0%{translate:0 -300px;animation-timing-function:cubic-bezier(.2,1,.3,1)}
+    24.1%{translate:0 18px;animation-timing-function:ease-in-out}   /* .68s 砸到底 */
+    48.3%{translate:0 -6px;animation-timing-function:ease-in-out}   /* 1.03s */
+    69.0%{translate:0 4px;animation-timing-function:ease-in-out}    /* 1.33s */
+    86.2%{translate:0 -1.5px;animation-timing-function:ease-out}    /* 1.58s */
+    100%{translate:0 0}}                                            /* 1.78s 稳住 */
+  /* 晃两下：落地时还歪着 -7°，甩正到 0°，回摆 -5°，收在 -3°（Figma rotate 轨原值） */
+  @keyframes plaqueSwing{
+    0%{rotate:-7deg}
+    24.1%{rotate:-7deg;animation-timing-function:ease-in-out}
+    44.8%{rotate:0deg;animation-timing-function:ease-in-out}
+    62.1%{rotate:-5deg;animation-timing-function:ease-in-out}
+    79.3%{rotate:-2.2deg;animation-timing-function:ease-out}
+    100%{rotate:-3deg}}
+  /* 点着玩：绕同一套角度语言抖两下（Figma 没导出点击态，按落地摆动的物理续写） */
+  #todayJarBtn.tap{animation:plaqueTap .62s cubic-bezier(.33,1,.68,1) both}
+  @keyframes plaqueTap{
+    0%{rotate:-3deg}
+    8%{rotate:0deg}
+    30%{rotate:-5deg}
+    52%{rotate:-2.2deg}
+    100%{rotate:-3deg}}
+    /* 外椭圆的 SVG 只保留纯矢量填色；阴影交给同尺寸 CSS 椭圆，避免 Safari 把 SVG filter
+       先低分辨率光栅化再旋转，出现 mamo 截图里底缘一排毛刺。 */
+  #todayJarBtn::before{content:"";position:absolute;left:5px;top:3px;width:118px;height:80px;
+    border-radius:50%;pointer-events:none;
+    box-shadow:1px 2px 3px rgba(0,0,0,.10),inset 0 1px rgba(255,255,255,.25)}
+  #todayJarBtn::after{content:"";position:absolute;left:11px;top:9px;width:107px;height:69px;
+    background:url('./assets/candyjar/ui/today-inner.svg') center/100% 100% no-repeat;pointer-events:none}
+  #todayJarBtn .tj-top{position:absolute;z-index:1;left:0;right:0;top:13px;margin:0 auto;width:107px;height:26px;overflow:visible}
+  #todayJarBtn .tj-top text{font:400 8px var(--f-en);fill:var(--c-ink);letter-spacing:1.6px}
+  #todayJarBtn .tj-dot{fill:var(--c-ink);opacity:.75}
+  #todayJarBtn b{display:none;position:absolute;z-index:1;left:0;right:0;top:14px;font:400 8px/1 var(--f-en);
+    letter-spacing:.4px;color:var(--c-mute)}
+  #todayJarBtn span{position:absolute;z-index:1;left:0;right:0;top:33px;font:13px/1 var(--f-cn)}
+  #todayJarBtn .tj-name{position:absolute;z-index:1;left:11px;top:47px;width:107px;height:39px;overflow:visible}
+  #todayJarBtn text{font:13px var(--f-cn);fill:var(--c-ink);letter-spacing:.6px}
+  body.showcase .hud.top .kicker{transform:translateY(-96px);opacity:0;transition-delay:0s}
+  body.showcase .hud.top .causality{transform:translateY(-132px);opacity:0;transition-delay:.035s}
+  body.showcase .hud.top .jarTitle{transform:translateY(-178px);opacity:0;transition-delay:.07s}
+  body.showcase .hud.top .wave{transform:translateY(-218px);opacity:0;transition-delay:.105s}
+  body.showcase .hud.top .cn{transform:translateY(-262px);opacity:0;transition-delay:.14s}
+  body.showcase .hud.top .today-wrap{transform:translateY(-338px);opacity:0;transition-delay:.18s}
+  /* ── 底部（Figma「底部按钮」1051:7942 真值搬运 · 2026-09-01）
+     顺序：储藏罐胶囊 → 装饰三方块（两侧细线夹三枚菱形）→ 中文提示 → 法文斜体，纵向 gap 7 ── */
+  .hud.bot{bottom:max(20px,calc(env(safe-area-inset-bottom) + 12px));z-index:4;
+    display:flex;flex-direction:column;align-items:center;gap:7px}
+  /* 储藏罐胶囊：112×50 圆角 49.5。**三道环全部从同一条外边起算**——mamo 2026-09-02 重做母版：
+     椭圆底自己叠两道内描边（Figma 里是 spread 5 / 5.6 的两枚 INNER_SHADOW），不再拿覆盖层去对位，
+     所以这里也不用 ::before，改成同心的 inset box-shadow：0.3 外描边 / 5 底色环 / 5.6 细线。
+     外描边同样走 inset（不用 border），三道才共用一条参考边、不差那 0.3px。 */
+  #mineBtn{position:relative;pointer-events:auto;width:112px;height:50px;padding:0;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
+    background:#f8f1e5;border:0;border-radius:49.5px;
+    box-shadow:inset 0 0 0 .3px #8b654f,inset 0 0 0 5px #f8f1e5,inset 0 0 0 5.6px #c7925a;
+    font-family:var(--f-cn);color:var(--c-ink);cursor:pointer;
+    -webkit-tap-highlight-color:transparent}
+  #mineBtn i{font-style:normal;font:8px/1 var(--f-en);color:#9d7849;transform:scaleY(-1)}
+  #mineBtn .t{display:flex;align-items:center;gap:5px;font-size:12px;letter-spacing:3px;
+    padding-bottom:4px;line-height:normal}
+  /* Figma「回到今日罐」1116:11853：奶糖底 #ecd6b5 + 纸色环 #f7ead7 + 深棕细线 #946246，星星暖白。 */
+  #mineBtn.return-today{background:#ecd6b5;
+    box-shadow:inset 0 0 0 .3px #8b654f,inset 0 0 0 5px #f7ead7,inset 0 0 0 5.6px #946246}
+  #mineBtn.return-today i{color:#fff5e7}
+  /* ── 选罐（Figma「软糖罐主界面-选罐」1219:22176，mamo 2026-09-05）──
+     上一罐/下一罐：66×65 圆角 49.5，底 #f7ebd7，.3px #8b654f 描边，内环 5px 底色 + 5.6px #c7925a；
+     左 18 / 右 19（393 宽里 308+66），竖向卡在罐子腰上（Figma top 415 → 中心 447.5/852 ≈ 52.5%）。
+     文字 12px 字距 3 #3b2a18；箭头 12×13 #c5a883，上一罐转 -90°、下一罐转 90°。 */
+  .pickBtn{position:fixed;top:52.5%;translate:0 -50%;width:66px;height:65px;padding:1px 1px 5px;
+    border:.3px solid #8b654f;border-radius:49.5px;background:#f7ebd7;
+    box-shadow:inset 0 0 0 5px #f7ebd7,inset 0 0 0 5.6px #c7925a;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
+    z-index:6;font:12px/1 var(--f-cn);letter-spacing:3px;text-indent:3px;color:#3b2a18;
+    -webkit-tap-highlight-color:transparent;
+    /* 进/退场：两颗钮各自往自己那侧滑出去，侧边栏同时从左边滑回来（mamo 2026-09-05：原来闪一下就换了）。
+       缺省态＝退到屏外；body.picking 时归位。visibility 延到位移结束才切，退场动画才播得完。 */
+    opacity:0;visibility:hidden;pointer-events:none;
+    transition:translate .42s cubic-bezier(.22,1,.36,1),opacity .3s ease,visibility 0s linear .42s}
+  .pickBtn img{width:12px;height:13px;display:block;margin-left:-3px}   /* 抵消 text-indent，箭头真居中 */
+  #pickPrev{left:18px;translate:-96px -50%} #pickPrev img{rotate:-90deg}
+  #pickNext{right:19px;translate:96px -50%} #pickNext img{rotate:90deg}
+  body.picking .pickBtn{opacity:1;visibility:visible;pointer-events:auto;
+    transition:translate .42s cubic-bezier(.22,1,.36,1),opacity .3s ease,visibility 0s}
+  /* 归位必须写成同级 ID：#pickPrev 的 translate 会压过 body.picking .pickBtn（本仓老坑：#sidebar button 压 #shopBtn 同案） */
+  body.picking #pickPrev,body.picking #pickNext{translate:0 -50%}
+  /* 侧边栏：选罐时整条滑出左侧，选定后滑回来（Figma 选罐稿里它是隐藏图层） */
+  #sidebar{transition:translate .42s cubic-bezier(.22,1,.36,1),opacity .32s ease}
+  body.picking #sidebar{translate:-88px 0;opacity:0;pointer-events:none;transition-delay:0s}
+  /* 开罐与否要等后端回话才知道；在那之前按住侧边栏，免得先亮一下再被换成选罐（mamo 2026-09-05 报"闪一下"）。 */
+  body.boot #sidebar{opacity:0;transition:none}
+  /* 错开先后：进场＝侧边栏先走、左钮 .10s、右钮 .18s；退场＝两钮先撤(右钮早 .06s)、侧边栏 .16s 后才滑回来 */
+  body.picking #pickPrev{transition-delay:.10s,.10s,0s}
+  body.picking #pickNext{transition-delay:.18s,.18s,0s}
+  #pickPrev{transition-delay:.06s,.06s,.48s}
+  #pickNext{transition-delay:0s,0s,.42s}
+  #sidebar{transition-delay:.16s}
+  @media (prefers-reduced-motion:reduce){.pickBtn,#sidebar{transition:opacity .2s ease}}
+  /* 装饰三方块：两侧 80px 细线 + 三枚 5px 菱形（蓝/橙/金），间距 8 */
+  #botDeco{display:flex;align-items:center;justify-content:center;gap:8px;height:6px;width:100%}
+  #botDeco span{flex:none;width:80px;height:.5px;background:var(--c-line2)}
+  #botDeco em{display:flex;align-items:center;justify-content:center;gap:5px;height:6px}   /* 三枚菱形靠近些(mamo) */
+  #botDeco i{display:block;width:5px;height:5px;transform:rotate(45deg)}
+  #botDeco i:nth-child(1){background:#b9cbdd}
+  #botDeco i:nth-child(2){background:#cd6b41}
+  #botDeco i:nth-child(3){background:#edc783}
+  .hud.bot .h1{font:12.5px/normal var(--f-cn);letter-spacing:3px;color:#a8845a;opacity:.8}
+  .hud.bot .h2{font:italic 11.5px/normal var(--f-en);letter-spacing:.6px;color:#a8845a;opacity:.8}
+  .badge{display:none}
+
+  /* ── 左侧三枚吊牌 ── */
+  #sidebar{position:fixed;left:14px;top:262px;display:flex;flex-direction:column;gap:10px;z-index:5}
+  /* 三枚吊牌（Figma 1073:9639 盒模型逐值复刻 · 2026-08-31 二次对账）
+     投影统一 0.5/2/1.5 黑30%（Figma 面板 blur 3 → CSS drop-shadow 取半）。 */
+  #sidebar button,#sidebar #paper{position:relative;display:flex;flex-direction:column;
+    align-items:center;gap:2px;padding:0 1px;border:0;width:53px;box-sizing:border-box;
+    filter:drop-shadow(.5px 2px 1.5px rgba(0,0,0,.3));cursor:pointer;
+    font-family:var(--f-cn);-webkit-tap-highlight-color:transparent;color:var(--c-ink);
+    transition:transform .42s cubic-bezier(.22,1,.36,1)}
+  /* ⚠️ 菱形是 <i class="dia">，选择器若写成 #sidebar i 会把英文标签的 opacity:.65
+     一并套到它头上，菱形就发灰（mamo 一眼看出“加了透明度吗”——08-31 实锤）。
+     所以英文标签只用 .en 类选，绝不用裸标签选择器。 */
+  #sidebar .dia{position:relative;z-index:2;flex:none;width:4px;height:4px;margin:.83px 0;
+    background:var(--c-ink);opacity:1;transform:rotate(45deg)}
+  #sidebar .lb{position:relative;z-index:2;font-size:12.5px;letter-spacing:2px;line-height:normal}
+  #sidebar .en{position:relative;z-index:2;font-style:normal;font-size:6.5px;letter-spacing:1.5px;
+    color:var(--c-ink);opacity:.65;font-family:var(--f-en);line-height:normal;
+    margin-top:-2px}   /* 与上面中文的行距缩 2px(mamo) */
+  /* 商店：Figma 无固定高（内容撑开）+ py4 + 内组 pt2.969/pb2；给死高度就会多出一截 */
+  #sidebar #shopBtn{padding:4px 1px;border-radius:28px 28px 5px 5px;background:var(--c-tag-blue)}
+  #sidebar #shopBtn .dia{margin-top:3.8px}
+  #sidebar #shopBtn .lb{margin-bottom:2px}
+  /* 图鉴：h54 / pt8 pb10 / 圆角 25；五边形由 svg 画，投影交给父级 filter（旋转后打，方向才对） */
+  #sidebar #dexBtn{height:54px;padding:8px 1px 10px;border-radius:25px 25px 5px 5px;
+    background:transparent;overflow:visible}
+  #sidebar #dexBtn .lb{margin-bottom:2px}
+  #dexBtn::before{content:"";position:absolute;z-index:1;left:-5px;top:-3px;width:63px;height:57px;
+    background:url('./assets/candyjar/ui/dex-tag.svg') center/100% 100% no-repeat;transform:rotate(180deg)}
+  /* 勇气：h57 / pt8 pb10；数字区 h16、汉字区 h15 且自带 py2（比商店图鉴低一档，mamo 指出） */
+  #sidebar #paper{height:57px;padding:8px 1px 10px;border-radius:28px 28px 5px 5px;background:var(--c-tag-gold)}
+  #paper b{position:relative;z-index:2;display:flex;align-items:center;justify-content:center;
+    width:100%;height:16px;padding:2px 0 5px;   /* pb5 顶回 Playfair 的偏下;pt2 再下移(mamo 图6) */
+    font:700 16px/16px var(--f-en);color:var(--c-ink);text-align:center;
+    text-shadow:-1px 0 var(--c-paper),1px 0 var(--c-paper),0 -1px var(--c-paper),0 1px var(--c-paper),
+                -1px -1px var(--c-paper),1px -1px var(--c-paper),-1px 1px var(--c-paper),1px 1px var(--c-paper)}
+  #paper .lb{display:flex;align-items:center;justify-content:center;
+    height:15px;padding:2px 0;box-sizing:border-box}
+  /* 白菱形：Figma 是**内描边**（17px 含描边），故 border-box；水平中心对齐 51px 内容区 */
+  #paper b::before{content:"";position:absolute;z-index:-1;box-sizing:border-box;
+    left:50%;top:.48px;width:17px;height:17px;margin-left:-8.5px;
+    background:var(--c-paper);border:1px solid #ad865c;transform:rotate(45deg)}
+  #sidebar button,#sidebar #paper{transform:translate3d(0,0,0)}
+  body.showcase #sidebar #shopBtn{transform:translate3d(0,-24px,0);transition-delay:.10s}
+  body.showcase #sidebar #dexBtn{transform:translate3d(0,-32px,0);transition-delay:.14s}
+  body.showcase #sidebar #paper{transform:translate3d(0,-40px,0);transition-delay:.18s}
+  #backBtn{position:fixed;left:18px;top:max(18px,calc(env(safe-area-inset-top) + 2px));z-index:8;width:42px;height:42px;padding:0;
+    border-radius:50%;border:1px solid #ad865c;background:#faf1da url('./assets/candyjar/ui/back-arrow.svg') center/14px 14px no-repeat;
+    box-shadow:inset 0 0 0 4.5px #fcf5e6,inset 0 0 0 5.5px #b6936b;
+    cursor:pointer;-webkit-tap-highlight-color:transparent}
+  /* 热区外扩 10px:视觉还是 42,手指好按(mamo 报点不到) */
+  #backBtn::after{content:"";position:absolute;inset:-10px;border-radius:50%}
+
+  /* ── 右侧药效票根 ── */
+  /* 药效票根（Figma「倒计时 游戏页面」1051:8994 真值还原，2026-08-31）：
+     右对齐贴边、**虚线只在右侧**、纸面 rgba(249,245,239,.6)、高 32、gap 5、
+     数字用等宽定位不跳（Figma 里数字容器是固定宽 33/52，所以 11→22 不会挤动旁边的字）。 */
+  /* 药效票根（Figma 1051:8994 逐值还原 · 2026-08-31 二次对账）
+     右缘停在画框内 1px（画框 inset:8px，故 right:9px）；虚线只在右侧；背景 .6 透明度是 Figma 原值。 */
+  #fxchips{position:fixed;right:9px;top:276px;display:flex;flex-direction:column;
+    align-items:flex-end;gap:5px;z-index:6}
+  #fxchips button{position:relative;display:flex;align-items:center;gap:5px;
+    border:0;border-right:1px dashed var(--c-line2);background:rgba(249,245,239,.6);
+    cursor:pointer;font-family:var(--f-cn);-webkit-tap-highlight-color:transparent;
+    transform-origin:100% 50%;transition:transform .35s cubic-bezier(.22,1,.36,1)}
+  #fxchips button::after{content:"";position:absolute;inset:-8px -4px -8px -12px}   /* 热区外扩,整枚牌都能点 */
+  #fxchips button *{pointer-events:none}   /* 点到数字/文字也算点在牌上(原来点数字打不开详情) */
+  #fxchips button:first-child{height:34px;padding:2px 6px 2px 8px;
+    box-shadow:0 2px 2px rgba(90,70,45,.2);transform:rotate(1.5deg)}
+  #fxchips button:last-child{height:33px;padding:2px 6px;
+    box-shadow:1px 2px 2px rgba(90,70,45,.2);transform:rotate(-1deg)}
+  #fxchips button .who{flex:none;font-size:12px;line-height:1;letter-spacing:0;   /* mamo 把字距改回 0 */
+    color:var(--c-orange)}
+  #fxchips button.ta .who{color:var(--c-blue)}
+  /* 数字块定宽：位数变化不推动左边的字、不改牌子长度；字体＝Playfair Display（OFL 可分发） */
+  #fxchips button .num{flex:none;width:42px;text-align:center;
+    font:400 15px/1.5 var(--f-en);color:var(--c-ink2);
+    padding-bottom:5px}   /* Figma:换 Playfair 后字偏下,父级补 pb5 顶回来(mamo 08-31) */
+  /* 每个数字占同宽格（.6em＝Playfair 里最宽的「0」）；冒号按自然宽。
+     ⚠️ Playfair 没有 tnum 特性，font-variant-numeric 在它身上无效，只能这样锁位。 */
+  .tnum i{display:inline-block;font-style:normal}
+  .tnum i.d{width:.6em;text-align:center}
+  #fxchips button .num.long{width:56px}   /* 两档固定宽,不随内容自适应(mamo):短 42 / 长 56 */
+  #fxchips button{white-space:nowrap}
+  body.showcase #fxchips button:first-child{transform:translateY(-24px) rotate(1.5deg);transition-delay:.12s}
+  body.showcase #fxchips button:last-child{transform:translateY(-34px) rotate(-1deg);transition-delay:.17s}
+  @media (prefers-reduced-motion:reduce){#fxchips button{transition:none}
+    .today-wrap::before,#todayJarBtn,#todayJarBtn.tap{animation:none}}
+
+  /* ── 底部卡片（选糖 / 揭晓） ── */
+  #card{position:fixed;left:50%;transform:translateX(-50%) translateY(16px);opacity:0;
+    pointer-events:none;transition:transform .25s cubic-bezier(.22,1,.36,1),opacity .25s ease;
+    bottom:max(6px,env(safe-area-inset-bottom));width:min(377px,calc(100vw - 16px));z-index:7;
+    background:var(--c-card);border:1px solid var(--c-ink);border-radius:16px;
+    padding:18px 22px 16px;box-shadow:0 10px 30px rgba(74,50,34,.08);color:var(--c-ink)}
+  #card::after{content:"";position:absolute;inset:5px;border:.5px solid rgba(59,42,24,.4);
+    border-radius:12px;pointer-events:none}
+  #card:not(.reveal){min-height:226px}
+  #card.show{opacity:1;transform:translateX(-50%) translateY(0);pointer-events:auto}
+  #card .eyebrow{display:flex;align-items:center;gap:11px;justify-content:center;
+    min-height:13px;font:10px/13px var(--f-en);letter-spacing:2.4px;color:var(--c-mute)}
+  #card .eyebrow::before,#card .eyebrow::after{content:"";height:1px;width:40px;background:var(--c-line2)}
+  #cardTitle{margin-top:7px;text-align:center;font:400 17px/25px var(--f-cn);
+    letter-spacing:1.5px;color:var(--c-ink)}
+  #card .dots{display:flex;height:10px;gap:2px;align-items:center;justify-content:center;margin-top:5px}
+  #card .dots i{width:5px;height:5px;transform:rotate(45deg);display:block}
+  #card .dots i:nth-child(1){background:var(--c-tag-blue)}
+  #card .dots i:nth-child(2){background:var(--c-orange)}
+  #card .dots i:nth-child(3){background:var(--c-tag-gold)}
+  #cardDesc{margin-top:7px;font:13px/24px var(--f-cn);color:var(--c-ink);opacity:.85;
+    min-height:58px;padding:5px 0;white-space:pre-line;max-height:34vh;overflow-y:auto;
+    -webkit-overflow-scrolling:touch}
+  #card.mine-detail #cardDesc{max-height:30vh}   /* 去掉演法后内容变短,卡片别再往上顶住糖(mamo) */
+  #feedMsg{width:100%;height:36px;margin-top:7px;border:1px solid var(--c-line2);border-radius:5px;
+    background:var(--c-card2);color:var(--c-ink);padding:8px 12px;outline:none;
+    font-family:var(--f-cn);font-size:16px;line-height:1.35}
+  #feedMsg::placeholder{font-size:13px;color:var(--c-line2)}
+  #cardBtns{display:flex;height:48px;gap:8px;align-items:center;margin-top:7px;padding:5px 0}
+  #cardBtns button{height:38px;padding:0 18px;border-radius:5px;cursor:pointer;
+    font:14px/1 var(--f-cn);letter-spacing:1px;border:1px solid transparent;
+    -webkit-tap-highlight-color:transparent}
+  /* Figma 1051:7501：画布 loop 只是动效示例；产品里只在玩家真正按下当前按钮时播一次。
+     「确定 / 取消 / 购买」这类动作按钮共用这一段（mamo 2026-09-02 铺开到全局），
+     所以选择器只认 .press-motion 这个类，谁挂上谁播；挂载名单见 JS 的 PRESS_BTN_SEL。 */
+  .press-motion{animation:cjButtonPress .32s linear both}
+  #eatMe{background:var(--c-btn-gold);color:var(--c-ink);border-color:#695c61!important;flex:0 0 110px}
+  #eatHim{background:var(--c-btn-blue);color:var(--c-ink);border-color:#695c61!important;flex:0 0 110px}
+  #card.feed #eatHim{flex-basis:211px}
+  #card.override #eatMe{flex-basis:211px}
+  #cardTitle .override-verb{color:var(--c-orange)}
+  #putBack{background:transparent;color:var(--c-ink);border-radius:0!important;border-bottom:2px solid var(--c-ink)!important;
+    opacity:.75;margin-left:16px;padding:0 5px!important;width:58px;height:32px!important}
+  #okBtn{flex:1;background:var(--c-ink);color:var(--c-card)}
+  @keyframes cjButtonPress{
+    0%{animation-timing-function:ease-in;translate:0 0;scale:1}
+    25%{animation-timing-function:cubic-bezier(.18,1.2,.4,1);translate:0 2px;scale:.92}
+    68.75%{animation-timing-function:ease-out;translate:0 -1px;scale:1.04}
+    100%{translate:0 0;scale:1}}
+  /* 吃下后的揭晓卡：Figma 1051:7554，拱券不是普通底弹卡 */
+  #card.reveal{width:min(330px,calc(100vw - 58px));height:min(609px,calc(100vh - 239px));
+    min-height:520px;padding:35px 26px 26px;border-radius:151px 151px 10px 10px;
+    box-shadow:0 18px 17px rgba(35,23,11,.38);display:flex;flex-direction:column}
+  #card.reveal::after{inset:6px;border-radius:145px 145px 6px 6px}
+  #card.reveal .dots{order:0;margin-top:9px;gap:11px}
+  #card.reveal .dots i{width:8px;height:8px}
+  #card.reveal .eyebrow{order:1;margin-top:5px;font:400 28px/1 "CaveatLocal","Caveat",cursive;
+    font-style:normal;font-synthesis:none;letter-spacing:0;color:#d9702f;transform:rotate(-1.5deg)}
+  #card.reveal .eyebrow::before,#card.reveal .eyebrow::after{display:none}
+  #card.reveal #cardTitle{order:2;margin-top:5px;line-height:1.2;letter-spacing:1px}
+  #card.reveal #cardTitle small{display:block;font:12px/17px var(--f-cn);letter-spacing:3px;opacity:.7}
+  #card.reveal #cardTitle i{display:block;width:165px;height:15px;margin:7px auto 3px;
+    background:url('./assets/candyjar/ui/reveal-wave.svg') center/100% 100% no-repeat}
+  #card.reveal #cardTitle span{display:block;font:18px/25px var(--f-cn);white-space:normal}
+  #card.reveal #cardTitle em{display:block;margin-top:3px;font:italic 12px/17px var(--f-en);
+    letter-spacing:0;color:var(--c-mute)}
+  #card.reveal #cardDesc{order:3;flex:1;margin-top:5px;max-height:none;min-height:0;overflow-y:auto;
+    font:13.5px/25px var(--f-cn);opacity:1;white-space:normal}
+  #card.reveal .reveal-sec{margin-bottom:10px}
+  #card.reveal .reveal-label{display:inline-block;min-width:40px;height:18px;margin-bottom:1px;
+    padding:0 4px 0 6px;white-space:nowrap;   /* 按内容撑开:写死 40px 会把「触发了因果」折行 */
+    font:11px/18px var(--f-cn);letter-spacing:4px;text-align:center;background:#e8c380;color:#5a3a1c}
+  #card.reveal .reveal-sec.cause .reveal-label{background:var(--c-tag-blue)}
+  /* 例句之间的空行要留着——mine-detail 那套有 pre-line，揭晓卡这套一直漏了（mamo 2026-09-04 报） */
+  #card.reveal .reveal-sec p{white-space:pre-line;margin:0}
+  /* 判词＝一句话结论：加粗+和下面的详情拉开（mamo 2026-09-04）。
+     选择器要压过上面那条 #card.reveal .reveal-sec p{margin:0}，所以带上 #card 前缀。 */
+  #card.reveal .reveal-sec p.lead,#card.mine-detail .reveal-sec p.lead,
+  .reveal-sec p.lead,#fxdtBody p.lead{font-weight:700;margin:0 0 8px}
+  #fxdtBody p{white-space:pre-line;margin:0}
+  /* 储藏罐详情卡:同一套分段标签；来历和图鉴统一用暗紫灰 */
+  #card.mine-detail .reveal-sec{margin-bottom:13px}
+  #card.mine-detail .reveal-label{display:inline-block;min-width:40px;height:18px;margin-bottom:3px;
+    padding:0 4px 0 6px;white-space:nowrap;
+    font:11px/18px var(--f-cn);letter-spacing:4px;text-align:center;background:#e8c380;color:#5a3a1c}
+  #card.mine-detail .reveal-sec.cause .reveal-label{background:var(--c-tag-blue)}
+  #card.mine-detail .reveal-sec.lore .reveal-label{background:#545252;color:#fbf5e9}
+  /* 正文＝Figma 1051:7499 真值:13px/24px、#3b2a18、整段 opacity .85(不是更浅的 ink2) */
+  #card.mine-detail .reveal-sec p{font:13px/24px var(--f-cn);color:var(--c-ink);opacity:.85;white-space:pre-line}
+  #card.reveal .reveal-sec.time .reveal-label{background:#cd6b40;color:#fbf5e9}
+  #card.reveal #feedMsg{display:none!important}
+  #card.reveal #cardBtns{order:4;margin-top:2px;position:relative;z-index:5}
+  #card.reveal #okBtn{width:100%;flex:none;display:block!important;letter-spacing:8px;pointer-events:auto}
+
+  /* Figma 1051:7554 / Shadow 动效：时间轴 5.8s 只是 AI 预览循环，产品里每次揭晓播一遍。
+     面板 0–550ms 弹起；标题装饰 300–950ms 分层进入；彩纸 300ms 起以 30ms 五档错峰。 */
+  #card.reveal .reveal-confetti{display:block;position:absolute;left:1px;top:1px;width:328px;height:160px;
+    overflow:visible;pointer-events:none}
+  #card .reveal-confetti{display:none}
+  .cj-confetti{position:absolute;display:flex;align-items:center;justify-content:center;opacity:0;
+    transform-origin:center}
+  .cj-confetti>i{display:block;flex:none;border-radius:1.5px}
+  #card.reveal.reveal-motion{
+    animation:cjRevealOpacity .55s linear both,cjRevealRise .55s linear both}
+  #card.reveal.reveal-motion .cj-confetti{
+    animation:cjConfettiOpacity .85s linear var(--delay) both,
+      cjConfettiTranslate .85s linear var(--delay) both,
+      cjConfettiScale .85s linear var(--delay) both,
+      cjConfettiRotate .85s linear var(--delay) both}
+  #card.reveal.reveal-motion .dots{
+    animation:cjDotsOpacity .55s linear both,cjDotsScale .55s linear both}
+  #card.reveal.reveal-motion .eyebrow{
+    animation:cjHoorayOpacity .65s linear both,cjHoorayScale .65s linear both}
+  #card.reveal.reveal-motion #cardTitle small{
+    animation:cjLeadOpacity .7s linear both,cjLeadMove .7s linear both}
+  #card.reveal.reveal-motion #cardTitle i{
+    animation:cjWaveOpacity .9s linear both,cjWaveScale .9s linear both}
+  #card.reveal.reveal-motion #cardTitle span{
+    animation:cjNameOpacity .85s linear both,cjNameMove .85s linear both}
+  #card.reveal.reveal-motion #cardTitle em{animation:cjFrenchOpacity .95s linear both}
+  #card.reveal.closing{pointer-events:none;animation:cjRevealClose .15s ease-in both}
+
+  @keyframes cjRevealOpacity{0%{opacity:0;animation-timing-function:ease-out}32.727%{opacity:1}100%{opacity:1}}
+  @keyframes cjRevealRise{
+    0%{translate:0 120px;animation-timing-function:cubic-bezier(.22,1,.36,1)}
+    69.091%{translate:0 -8px;animation-timing-function:ease}100%{translate:0 0}}
+  @keyframes cjDotsOpacity{0%,63.636%{opacity:0;animation-timing-function:ease-out}90.909%,100%{opacity:1}}
+  @keyframes cjDotsScale{0%,63.636%{scale:.5;animation-timing-function:ease-out}100%{scale:1}}
+  @keyframes cjHoorayOpacity{0%,46.154%{opacity:0;animation-timing-function:ease-out}64.615%,100%{opacity:1}}
+  @keyframes cjHoorayScale{
+    0%,46.154%{scale:0;animation-timing-function:cubic-bezier(.18,1.2,.4,1)}
+    76.923%{scale:1.15;animation-timing-function:ease-out}100%{scale:1}}
+  @keyframes cjLeadOpacity{0%,71.429%{opacity:0;animation-timing-function:ease-out}100%{opacity:1}}
+  @keyframes cjLeadMove{0%,71.429%{translate:0 8px;animation-timing-function:ease-out}100%{translate:0 0}}
+  @keyframes cjWaveOpacity{0%,61.111%{opacity:0;animation-timing-function:ease-out}72.222%,100%{opacity:1}}
+  @keyframes cjWaveScale{
+    0%,61.111%{scale:0 1;animation-timing-function:cubic-bezier(.25,1,.5,1)}
+    88.889%{scale:1.05 1;animation-timing-function:ease-out}100%{scale:1 1}}
+  @keyframes cjNameOpacity{0%,76.471%{opacity:0;animation-timing-function:ease-out}100%{opacity:1}}
+  @keyframes cjNameMove{0%,76.471%{translate:0 6px;animation-timing-function:ease-out}100%{translate:0 0}}
+  @keyframes cjFrenchOpacity{0%,78.947%{opacity:0;animation-timing-function:ease-out}100%{opacity:1}}
+  @keyframes cjConfettiOpacity{
+    0%{opacity:0}5.882%{opacity:1;animation-timing-function:ease-in-out}
+    64.706%{opacity:.8;animation-timing-function:ease-in}100%{opacity:0}}
+  @keyframes cjConfettiTranslate{
+    0%{translate:var(--sx) var(--sy);animation-timing-function:cubic-bezier(.16,1,.3,1)}
+    29.412%{translate:0 0;animation-timing-function:ease-in}100%{translate:0 var(--ey)}}
+  @keyframes cjConfettiScale{
+    0%{scale:.3;animation-timing-function:ease-out}23.529%{scale:1.2;animation-timing-function:ease-out}
+    41.176%{scale:1;animation-timing-function:ease-in}100%{scale:.5}}
+  @keyframes cjConfettiRotate{0%{rotate:0deg;animation-timing-function:ease-out}100%{rotate:var(--turn)}}
+  @keyframes cjRevealClose{
+    0%{opacity:1;translate:0 0;scale:1}100%{opacity:0;translate:0 46px;scale:.985}}
+  @media (prefers-reduced-motion:reduce){
+    body::before,.hud.top>*,#sidebar button,#sidebar #paper,#fxchips button,#card{transition:none!important}
+    .press-motion{animation:none!important;translate:0 0;scale:1}
+    #dexDetail.show::before,#dexDetail.show #ddPanel{animation:none!important;opacity:1;rotate:0deg;scale:1 1}
+    #dexTabs button.on::before{animation:none!important;scale:1 1}
+    #card.reveal.reveal-motion,#card.reveal.reveal-motion .dots,#card.reveal.reveal-motion .eyebrow,
+    #card.reveal.reveal-motion #cardTitle>*,#card.reveal.closing{animation:none!important;opacity:1;translate:0 0;scale:1}
+    #card.reveal .reveal-confetti{display:none!important}
+  }
+  #plusone{position:fixed;pointer-events:none;font:700 22px var(--f-en);color:var(--c-ink);
+    opacity:0;z-index:9;text-shadow:0 1px 0 var(--c-paper),0 0 7px rgba(247,234,215,.9)}
+  #plusone.fly{animation:pFly 1.5s cubic-bezier(.22,1,.36,1) forwards}
+  @keyframes pFly{
+    0%{opacity:0;transform:translateY(4px) scale(.7)}
+    18%{opacity:1;transform:translateY(-6px) scale(1.25)}
+    45%{opacity:1;transform:translateY(-22px) scale(1)}
+    100%{opacity:0;transform:translateY(-46px) scale(.95)}}
+  /* 数字跳动：幅度和时长都加大（mamo：原来几乎看不到） */
+  #courageN.bump{animation:cBump 1.05s cubic-bezier(.22,1,.36,1)}
+  @keyframes cBump{
+    0%{transform:scale(1)}
+    22%{transform:scale(2.1);color:#8a5a20}
+    48%{transform:scale(1.28);color:#8a5a20}
+    72%{transform:scale(1.62);color:#8a5a20}
+    100%{transform:scale(1)}}
+  /* 整枚勇气吊牌也亮一下，眼睛才会被带过去 */
+  #sidebar #paper.hit{animation:pHit 1.05s cubic-bezier(.22,1,.36,1)}
+  @keyframes pHit{
+    0%{filter:drop-shadow(.5px 2px 1.5px rgba(0,0,0,.3))}
+    25%{filter:drop-shadow(.5px 2px 1.5px rgba(0,0,0,.3)) drop-shadow(0 0 10px rgba(184,147,61,.9))}
+    100%{filter:drop-shadow(.5px 2px 1.5px rgba(0,0,0,.3))}}
+
+  /* ── 商店（P2 样机 · 法式轻奢皮）───────────────────────────
+     陈列柜只上尝过的品种,五小时一换;买下的糖进「我的罐子」(见 buildShop)。 */
+  /* ── 商店（Figma「商店」1051:7739 逐值复刻 · 2026-09-03）──
+     全屏纸页 + 装饰画框；返回钮同主界面；右上角勇气牌＝主界面侧栏那枚原样搬来；
+     两枚 160×90 双圈页签（选中黑底）；刷新时间一行；商品卡 h100 圆角 15、名字下细线、橘色价签；
+     机制糖名字用橘红；底部三菱形。 */
+  #shop{position:fixed;inset:0;z-index:26;display:none;background:var(--c-paper)}
+  #shop.show{display:flex;flex-direction:column}
+  #shop::after{content:"";position:absolute;inset:9px;z-index:0;pointer-events:none;
+    border:1px solid rgba(118,78,44,.9);border-radius:20px}
+  #shopBack{position:fixed;left:18px;top:max(18px,calc(env(safe-area-inset-top) + 2px));
+    z-index:27;width:42px;height:42px;padding:0;border-radius:50%;border:1px solid #ad865c;
+    background:#faf1da url('./assets/candyjar/ui/back-arrow.svg') center/14px 14px no-repeat;
+    box-shadow:inset 0 0 0 4.5px #fcf5e6,inset 0 0 0 5.5px #b6936b;
+    color:transparent;cursor:pointer;-webkit-tap-highlight-color:transparent}
+  #shopBack::after{content:"";position:absolute;inset:-10px;border-radius:50%}
+  /* 勇气牌：与侧栏 #paper 同一套（53×57、金底、白菱形数字、勇气/COURAGE） */
+  #shopPurse{position:fixed;right:18px;top:max(28px,calc(env(safe-area-inset-top) + 8px));z-index:27;   /* 红框位:与标题行齐(mamo) */
+    width:53px;height:57px;padding:8px 1px 10px;box-sizing:border-box;
+    display:flex;flex-direction:column;align-items:center;gap:2px;
+    border-radius:28px 28px 5px 5px;background:var(--c-tag-gold);
+    filter:drop-shadow(.5px 2px 1.5px rgba(0,0,0,.3));font-family:var(--f-cn);color:var(--c-ink)}
+  #shopPurse b{position:relative;z-index:2;display:flex;align-items:center;justify-content:center;
+    width:100%;height:16px;padding:2px 0 5px;font:700 16px/16px var(--f-en);color:var(--c-ink);
+    text-shadow:-1px 0 var(--c-paper),1px 0 var(--c-paper),0 -1px var(--c-paper),0 1px var(--c-paper),
+                -1px -1px var(--c-paper),1px -1px var(--c-paper),-1px 1px var(--c-paper),1px 1px var(--c-paper)}
+  #shopPurse b::before{content:"";position:absolute;z-index:-1;box-sizing:border-box;
+    left:50%;top:.48px;width:17px;height:17px;margin-left:-8.5px;
+    background:var(--c-paper);border:1px solid #ad865c;transform:rotate(45deg)}
+  #shopPurse .lb{display:flex;align-items:center;justify-content:center;height:15px;padding:2px 0;box-sizing:border-box;
+    font-size:12.5px;letter-spacing:2px;line-height:normal}
+  #shopPurse .en{font:6.5px/normal var(--f-en);letter-spacing:1.5px;opacity:.65;margin-top:-2px}
+  #shopHead{position:relative;z-index:1;flex:none;padding-top:max(22px,calc(env(safe-area-inset-top) + 2px));   /* 上移:原 +16 靠下(mamo) */
+    display:flex;flex-direction:column;align-items:center;gap:1px}
+  #shopHead .kicker{font:9.5px/normal var(--f-cn);letter-spacing:5px;color:var(--c-ink);opacity:.55}
+  #shopHead .t{font:italic 500 27px/29.7px var(--f-en);color:var(--c-ink);padding-bottom:.69px}
+  #shopHead .sub{height:22px;display:flex;align-items:center;font:15px/normal var(--f-cn);letter-spacing:4px;color:var(--c-ink)}
+  #shopHead .wave{display:block;width:390px;max-width:100%;height:25px;
+    background:url('./assets/candyjar/ui/dex-wave.svg') center/100% 100% no-repeat}
+  /* 两种商店：160×90、圆角 12、内圈双环（inset 阴影）；选中＝黑底 */
+  #shopTabs{position:relative;z-index:1;flex:none;display:flex;align-items:center;justify-content:center;gap:10px;padding:10px 0}
+  #shopTabs button{position:relative;width:160px;height:90px;padding:12px 10px 7px;box-sizing:border-box;
+    border:.6px solid #a68657;border-radius:12px;background:#f2e3cb;
+    box-shadow:inset 0 0 0 4.7px #f2e3cb,inset 0 0 0 5px #d8ab6a;
+    display:flex;flex-direction:column;align-items:center;text-align:center;
+    font-family:var(--f-cn);cursor:pointer;-webkit-tap-highlight-color:transparent;
+    rotate:var(--tilt,0deg)}
+  #tabMystery{--tilt:.81deg}
+  #tabSelect{--tilt:-1.51deg}   /* 倾斜按 Figma 原角(mamo 特意歪的) */
+  #shopTabs button.tilt{animation:tabTilt .5s cubic-bezier(.33,1,.68,1)}
+  @keyframes tabTilt{
+    0%{rotate:var(--tilt,0deg)}
+    32%{rotate:calc(var(--tilt,0deg) - 2.4deg)}
+    68%{rotate:calc(var(--tilt,0deg) + 1.2deg)}
+    100%{rotate:var(--tilt,0deg)}}
+  #shopTabs button b{display:flex;align-items:center;justify-content:center;height:24px;width:100%;
+    font:400 15px/normal var(--f-cn);letter-spacing:4px;color:#533d25}
+  #shopTabs button i{display:flex;align-items:center;justify-content:center;height:15px;
+    font:italic 400 12px/normal var(--f-en);color:#a8845a}
+  #shopTabs button span{display:flex;align-items:center;justify-content:center;height:31px;width:100%;
+    font:10px/1.3 var(--f-cn);color:#a8855d}
+  #shopTabs button.on{padding-top:16px;border-color:transparent;background:#3b2a18;
+    box-shadow:inset 0 0 0 4.5px #3b2a18,inset 0 0 0 5px #b3915f}
+  #shopTabs button.on b{color:#ead6b7}
+  #shopTabs button.on i{height:11px;color:#d4c1a3}
+  #shopTabs button.on span{color:#d3b382}
+  #shopRefresh{position:relative;z-index:1;flex:none;padding-bottom:2px;text-align:center;
+    font:10.5px/normal var(--f-cn);letter-spacing:3px;color:var(--c-ink);opacity:.5}
+  #shopBody{position:relative;z-index:1;flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;
+    display:flex;flex-direction:column;align-items:center;gap:12px;padding:5px 28px 16px}
+  .shopRow{width:100%;height:100px;padding:18px 15px;box-sizing:border-box;
+    display:flex;align-items:center;gap:8px;
+    background:#fcf5e6;border:.8px solid rgba(59,42,24,.5);border-radius:15px}
+  .shopRow .pic{flex:none;width:46px;height:47px;border-radius:35px;overflow:hidden;
+    display:flex;align-items:center;justify-content:center}
+  .shopRow .pic img{width:100%;height:100%;object-fit:contain}
+  .shopRow .txt{flex:1 0 0;min-width:1px;height:70px;display:flex;flex-direction:column;gap:7px}
+  .shopRow .txt.appearance-only{justify-content:center;gap:0}
+  .shopRow.description-only{padding-top:10px;padding-bottom:10px}
+  .shopRow.description-only .txt{height:80px}
+  .shopRow .nm{padding:1px 0 2px;font:13px/normal var(--f-cn);letter-spacing:1px;color:#3b2a18;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .shopRow.mm .nm{color:#cd6b41}   /* 机制糖：名字换橘红（mamo） */
+  .shopRow .rule{display:block;width:158.5px;max-width:100%;height:1px;background:#917050;opacity:.55}   /* .5px 线半像素不着色→1px 压透明度 */
+  .shopRow .ds{height:37px;padding:0 3px;font:11.5px/18.4px var(--f-cn);color:#3b2a18;opacity:.65;
+    display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  .shopRow .txt.appearance-only .ds{height:auto;max-height:73.6px;padding:0;-webkit-line-clamp:4}
+  .shopRow button{flex:none;padding:7px 13px 8px;border:0;border-radius:999px;background:#cd7241;
+    box-shadow:1px 2px 3px rgba(0,0,0,.25);   /* Figma 价签投影 */
+    font:12px/normal var(--f-cn);color:#fcf5e6;white-space:nowrap;cursor:pointer;-webkit-tap-highlight-color:transparent}
+  .shopRow button[disabled]{opacity:.45;cursor:default}
+  .shopEmpty{width:100%;padding:18px 6px;text-align:center;font:11.5px/1.8 var(--f-cn);color:var(--c-mute)}
+  /* 神秘柜分割线：上面是本罐的新糖，下面是别的罐补进来的（mamo 2026-09-04） */
+  .shopDivider{width:100%;display:flex;align-items:center;gap:10px;padding:4px 6px 2px;color:var(--c-mute)}
+  .shopDivider i{flex:1;height:1px;background:rgba(59,42,24,.28)}
+  .shopDivider span{flex:none;font:11px/1.6 var(--f-cn);letter-spacing:2px;white-space:nowrap}
+  .shopDivider em{font:italic 10px/1 var(--f-en);letter-spacing:1px;opacity:.75}
+  #shopFoot{position:relative;z-index:1;flex:none;display:flex;align-items:center;justify-content:center;
+    padding:10px 0 calc(14px + env(safe-area-inset-bottom))}   /* 原来占死 124px,最后一张卡被裁(mamo 绿圈) */
+  #shopFoot .dias{display:flex;align-items:center;gap:9.3px;height:8px}
+  #shopFoot .dias i{width:8px;height:8px;display:block;transform:rotate(45deg)}
+  #shopFoot .dias i:nth-child(1){background:#b9cbdd}
+  #shopFoot .dias i:nth-child(2){background:#cd6b41}
+  #shopFoot .dias i:nth-child(3){background:#edc783}
+  /* 购买二次确认:同喂糖确认卡的框和按钮(mamo 图5) */
+  #shopConfirm{position:fixed;inset:0;z-index:29;display:none;background:rgba(59,42,24,.34);
+    align-items:center;justify-content:center;padding:16px}
+  #shopConfirm.show{display:flex}
+  #shopConfirm .card{position:relative;width:min(377px,calc(100vw - 16px));
+    background:var(--c-card);border:1px solid var(--c-ink);border-radius:16px;
+    padding:18px 22px 16px;box-shadow:0 10px 30px rgba(74,50,34,.08);color:var(--c-ink)}
+  #shopConfirm .card::after{content:"";position:absolute;inset:5px;border:.5px solid rgba(59,42,24,.4);
+    border-radius:12px;pointer-events:none}
+  #shopConfirm .eyebrow{display:flex;align-items:center;gap:11px;justify-content:center;
+    min-height:13px;font:10px/13px var(--f-en);letter-spacing:2.4px;color:var(--c-mute)}
+  #shopConfirm .eyebrow::before,#shopConfirm .eyebrow::after{content:"";height:1px;width:40px;background:var(--c-line2)}
+  #shopConfirm .ttl{margin-top:7px;text-align:center;font:400 17px/25px var(--f-cn);letter-spacing:1px}
+  #shopConfirm .ttl:empty{display:none}
+  #shopConfirm .preview{display:none;width:38px;height:38px;margin:5px auto 0;align-items:center;justify-content:center}
+  #shopConfirm .preview.show{display:flex}
+  #shopConfirm .preview img{display:block;width:38px;height:38px;object-fit:contain}
+  #shopConfirm .desc{margin-top:10px;min-height:44px;text-align:center;font:13px/24px var(--f-cn);opacity:.85;white-space:pre-line}
+  #shopConfirm .btns{display:flex;height:48px;gap:8px;align-items:center;margin-top:7px;padding:5px 0}
+  #shopConfirm .ok{flex:0 0 211px;height:38px;border-radius:5px;cursor:pointer;font:14px/1 var(--f-cn);
+    letter-spacing:3px;background:var(--c-btn-blue);color:var(--c-ink);border:1px solid #695c61;
+    -webkit-tap-highlight-color:transparent}
+  #shopConfirm .no{height:32px;width:58px;margin-left:16px;padding:0 5px;border:0;border-bottom:2px solid var(--c-ink);
+    background:transparent;color:var(--c-ink);opacity:.75;font:14px/1 var(--f-cn);letter-spacing:4px;
+    cursor:pointer;-webkit-tap-highlight-color:transparent}
+  /* 结果态(购买完成):说明行撤掉、独一枚橙红按钮居中(价签同款 #cd7241,mamo 2026-09-02) */
+  #shopConfirm .desc:empty{display:none}
+  #shopConfirm .card.done .btns{justify-content:center}
+  #shopConfirm .card.done .ok{background:#cd7241;color:#fcf5e6;border-color:#a85a33}
+  #shopToast{position:fixed;left:50%;transform:translateX(-50%);bottom:96px;z-index:28;
+    padding:9px 16px;border-radius:999px;background:rgba(59,42,24,.92);color:var(--c-card);
+    font:12.5px/1 var(--f-cn);letter-spacing:1px;opacity:0;pointer-events:none;
+    transition:opacity .2s ease}
+  #shopToast.on{opacity:1}
+  /* 罐边气泡(半透白):空储藏罐引导等轻提示 */
+  /* 「浮现文字」＝Figma 1111:11833：**没有气泡背板，只有字**（mamo 2026-09-01）。
+     位置真值 x119 w157（画布 390 → 居中）、y283（846 → 33.5%）；
+     157×50 装得下两行 → 反推字号即正文那套 13px/24px，色同正文 #3b2a18。
+     字色 #6e5649（mamo 给的，图层隐藏读不到只能问她）。 */
+  #jarBubble{position:fixed;left:50%;top:36.5%;transform:translateX(-50%);z-index:8;   /* 上移一个字高(mamo 二调) */
+    width:max-content;max-width:157px;text-align:center;
+    font:11.5px/1.4 var(--f-cn);letter-spacing:.5px;color:#6e5649;   /* 11.5px/140%(mamo 二调) */
+    opacity:0;pointer-events:none;
+    /* 浮现：从下方 6px 淡上来（Figma 同节点 motion 原值） */
+    translate:0 6px;transition:opacity .42s ease,translate .42s ease}
+  #jarBubble{translate:0 6px}
+  #jarBubble.on{opacity:1;translate:0 0}
+  #jarBubble.out{opacity:0;translate:0 -4px}   /* 退场上飘(她的 ink-appear 94.83% 那帧) */
+  @media (prefers-reduced-motion:reduce){
+    #jarBubble{translate:0 0;transition:opacity .2s ease}}
+
+  /* 倒计时详情与图鉴详情统一：整张纸从下方推上来，不再旋转、拉伸或弹到本体之外。 */
+  #fxdt.show #fxdtCard{transform-origin:50% 100%;animation:ddCardRise .36s cubic-bezier(.22,1,.36,1) both}
+  #fxdt.show #fxdtCard.settled{animation:none;opacity:1;transform:none}
+  @media (prefers-reduced-motion:reduce){#fxdt.show #fxdtCard{animation:none}}
+  /* ── 药效详情卡（Figma 1051:7803「聊天界面 查看倒计时」· 与揭晓卡是两套设计） ── */
+  #fxdt{position:fixed;inset:0;z-index:24;display:none;
+    align-items:center;justify-content:center;padding:14px;
+    background:rgba(59,42,24,.34);backdrop-filter:blur(3px)}
+  #fxdt.show{display:flex}
+  #fxdtCard{width:min(330px,92vw);max-height:88vh;overflow-y:auto;
+    background:var(--c-card);border:1px solid var(--c-ink);
+    border-radius:151px 151px 10px 10px;   /* 顶部拱形 */
+    padding:25px 26px 26px;
+    filter:drop-shadow(0 15px 15px rgba(35,23,11,.25));
+    display:flex;flex-direction:column;align-items:center;gap:2.8px;color:var(--c-ink);
+    position:relative}
+  /* 外框内的一圈细描边(Figma 1086:11442):0.5px、同色 40% 透明、圆角 145/6 */
+  #fxdtCard::before{content:"";position:absolute;inset:4px;pointer-events:none;
+    border:.5px solid rgba(59,42,24,.4);border-radius:145px 145px 6px 6px}
+  #fxdtCard .dias{display:flex;gap:8px;align-items:center;justify-content:center;height:30px}
+  #fxdtCard .dias i{width:8px;height:8px;display:block;transform:rotate(45deg)}
+  #fxdtCard .dias i:nth-child(1){background:#b9cbdd}
+  #fxdtCard .dias i:nth-child(2){background:#cd6b41}
+  #fxdtCard .dias i:nth-child(3){background:#edc783}
+  #fxdtCard .fr{height:25px;display:flex;align-items:center;
+    font:italic 400 12px/1 var(--f-en);color:var(--c-mute)}
+  #fxdtCard .ask{font:12px/1.5 var(--f-cn);letter-spacing:1px;   /* mamo 08-31:3 → 1 */color:var(--c-ink);text-align:center}
+  #fxdtCard .nm{font:18px/1.5 var(--f-cn);letter-spacing:1px;color:var(--c-ink);text-align:center}
+  #fxdtCard .wave{width:165px;height:14.14px;
+    background:url('./assets/candyjar/ui/reveal-wave.svg') center/contain no-repeat}
+  /* 剩余时间：双层圆角框（外 0.3px 细线 + 内 1px 实线） */
+  #fxdtCard .clock{width:112px;height:68px;border:.3px solid #3b2917;border-radius:49.5px;
+    display:flex;align-items:center;justify-content:center;margin:4px 0 2px}
+  #fxdtCard .clock>div{width:102px;height:59px;border:1px solid #3b2917;border-radius:49.5px;
+    background:var(--c-card);display:flex;flex-direction:column;align-items:center;justify-content:center}
+  #fxdtCard .clock b{font:400 9px/1 var(--f-cn);letter-spacing:2px;color:var(--c-ink);
+    padding-bottom:2px;font-weight:400}
+  #fxdtCard .clock span{font:600 24px/1 var(--f-en);color:var(--c-ink);padding-bottom:5px}
+  /* 标签行：玩家=橘底「你的」／AI=蓝底「Ta的」，两套（mamo 08-31） */
+  #fxdtCard .tags{display:flex;align-items:center;gap:0;margin-top:9px;align-self:flex-start}
+  /* 字距与揭晓卡的标签**完全一致**（mamo：就照揭晓卡那套走） */
+  #fxdtCard .tags em{font-style:normal;height:18px;padding:0 4px 0 6px;display:inline-flex;
+    align-items:center;justify-content:center;white-space:nowrap;
+    font:11px/18px var(--f-cn);letter-spacing:4px;color:#5a3a1c}
+  /* 宽度用 Figma 的固定值锁死：letter-spacing 会在末字后也留一份空隙，
+     不锁宽的话盒子就被那份尾随空隙撑宽（mamo:「外显症状」看着宽） */
+  #fxdtCard .tags em.who{background:#e9a97f}
+  #fxdtCard .tags.ta em.who{letter-spacing:0;background:#adc5e1}   /* Ta 不做字距:T a 挨着,空格后写「的」 */   /* Ta 的:字距 0 */
+  #fxdtCard .tags em.kind{background:#edddc4}
+  #fxdtBody{align-self:stretch;margin-top:6px;
+    font:13.5px/24.98px var(--f-cn);color:var(--c-ink);white-space:pre-line;
+    /* 正文留 13 行左右，多的自己滚——不然长演法会把「知道了」压成一条细缝（mamo 2026-09-04 报） */
+    max-height:min(325px,44vh);overflow-y:auto;-webkit-overflow-scrolling:touch;
+    overscroll-behavior:contain}
+  #fxdtOk{flex:none;align-self:stretch;margin-top:14px;height:38px;border:0;border-radius:5px;
+    background:var(--c-ink);color:var(--c-card);font:14px/1 var(--f-cn);letter-spacing:8px;
+    cursor:pointer;-webkit-tap-highlight-color:transparent}
+
+  /* ── 横屏挡板（mamo 2026-09-04：横过来整页被挤扁）──
+     手机横屏才出：竖屏游戏的通行做法是"请竖屏"提示层。
+     不用 manifest 的 orientation:portrait —— iOS 的 PWA 基本不认那条。
+     阈值用 max-height:560px：手机横屏会中，平板/桌面不会。 */
+  #rotate{display:none;position:fixed;inset:0;z-index:999;
+    flex-direction:column;align-items:center;justify-content:center;gap:14px;
+    background:var(--c-paper);color:var(--c-ink);text-align:center}
+  #rotate .ph{width:46px;height:74px;border:2px solid var(--c-ink);border-radius:9px;
+    position:relative;animation:rotHint 2.2s ease-in-out infinite}
+  #rotate .ph::after{content:"";position:absolute;left:50%;bottom:5px;transform:translateX(-50%);
+    width:14px;height:2px;border-radius:2px;background:var(--c-ink);opacity:.55}
+  #rotate b{font:14px/1.6 var(--f-cn);letter-spacing:6px;font-weight:400}
+  #rotate i{font:italic 11px/1.6 var(--f-en);letter-spacing:1.5px;opacity:.6}
+  @keyframes rotHint{0%,42%{transform:rotate(0)}58%,100%{transform:rotate(-90deg)}}
+  @media (prefers-reduced-motion:reduce){#rotate .ph{animation:none;transform:rotate(-90deg)}}
+  @media (orientation:landscape) and (max-height:560px){ #rotate{display:flex} }
+
+  /* ── 图鉴 / 详情 ── */
+  /* ── 图鉴（Figma「图鉴」1134:18999 逐值复刻 · 2026-09-02）──
+     全屏纸页：返回钮同主界面；标题组 LA COLLECTION / Candy Dex / 图鉴 + 390×25 波浪；
+     五页签 h35 圆角 6，选中黑底白字、字下多一枚 6×9 宝石（所以字比旁边的高）；
+     385×10 双线；3 列网格 gap 11、内距 13/28；格子拱顶 50/底 10、.8px 描边；底栏条纹进度条。 */
+  #dex{position:fixed;inset:0;z-index:20;display:none;background:var(--c-paper)}
+  #dex.show{display:flex;flex-direction:column}
+  #dex::before{content:none}   /* 图鉴只留蓝灰渐变带，Figma 没有主页那层半调点阵 */
+  #dex::after{content:"";position:absolute;inset:9px;z-index:0;pointer-events:none;
+    border:1px solid rgba(118,78,44,.9);border-radius:20px}
+  #dexBand{position:absolute;left:9px;right:9px;top:9px;height:169px;z-index:0;pointer-events:none;
+    border-radius:20px 20px 0 0;
+    background:linear-gradient(to bottom,rgba(189,206,220,.8),rgba(247,234,215,0))}   /* Figma 渐变色层 */
+  #dexBack{position:fixed;left:18px;top:max(18px,calc(env(safe-area-inset-top) + 2px));
+    z-index:27;width:42px;height:42px;padding:0;border-radius:50%;border:1px solid #ad865c;
+    background:#faf1da url('./assets/candyjar/ui/back-arrow.svg') center/14px 14px no-repeat;
+    box-shadow:inset 0 0 0 4.5px #fcf5e6,inset 0 0 0 5.5px #b6936b;
+    color:transparent;cursor:pointer;-webkit-tap-highlight-color:transparent}
+  #dexBack::after{content:"";position:absolute;inset:-10px;border-radius:50%}
+  #dexHead{position:relative;z-index:1;flex:none;padding-top:max(23px,calc(env(safe-area-inset-top) + 7px));
+    display:flex;flex-direction:column;align-items:center;gap:1px}
+  #dexHead .kicker{font:9.5px/normal var(--f-cn);letter-spacing:5px;color:var(--c-ink);opacity:.55}
+  #dexHead .t{font:italic 500 27px/29.7px var(--f-en);color:var(--c-ink);padding-bottom:.69px}
+  #dexHead .sub{height:22px;padding:5px 0 2px;box-sizing:content-box;font:15px/normal var(--f-cn);letter-spacing:4px;color:var(--c-ink)}
+  #dexHead .wave{display:block;width:390px;max-width:100%;height:25px;
+    background:url('./assets/candyjar/ui/dex-wave.svg') center/100% 100% no-repeat}
+  #dexTabs{position:relative;z-index:1;flex:none;display:flex;align-items:center;justify-content:center;
+    gap:5px;height:43px;padding:10px 10px 3px;box-sizing:border-box}
+  #dexTabs button{position:relative;height:35px;padding:6px 5px 7px;border:0;border-radius:6px;background:transparent;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    font:14px/normal var(--f-cn);letter-spacing:1px;color:#3b2a18;cursor:pointer;-webkit-tap-highlight-color:transparent}
+  /* 选中态的黑底改由 ::before 画，好让它**从底往上涨**（mamo 2026-09-02 要的"快速充能到顶"）。
+     点页签会走 renderDex()、整排按钮重建，所以动画直接挂在 .on::before 上——新按钮一生成就播一遍，
+     不用另加 class 也不会漏播。z-index:-1 让它压在文字下面（#dexTabs 自身有层叠上下文，兜得住）。
+     文字变色**延到充能快到顶时再翻**，免得黑柱还没盖上来、浅底上先出现了浅字。 */
+  #dexTabs button::before{content:"";position:absolute;inset:0;z-index:-1;border-radius:6px;
+    background:#3b2a18;transform-origin:50% 100%;scale:1 0}
+  #dexTabs button.on::before{scale:1 1;animation:dexTabFill .2s cubic-bezier(.22,1,.36,1) both}
+  @keyframes dexTabFill{0%{scale:1 0}100%{scale:1 1}}
+  #dexTabs button.on{color:#fcf5e6;transition:color .07s linear .13s}
+  #dexTabs button.on::after{content:"";width:6px;height:9px;flex:none;
+    background:url('./assets/candyjar/ui/dex-gem.svg') center/100% 100% no-repeat}
+  #dexTabLine{position:relative;z-index:1;flex:none;display:block;width:385px;max-width:100%;height:10px;margin:0 auto;
+    background:url('./assets/candyjar/ui/dex-tabline.svg') center/100% 100% no-repeat}
+  #dexMurphyNote{position:relative;z-index:1;display:none;flex:none;height:27px;padding:4px 18px 5px;box-sizing:border-box;
+    text-align:center;white-space:nowrap;font:10.5px/18px var(--f-cn);letter-spacing:.15px;color:#8b654f}
+  #dexMurphyNote.show{display:block}
+  #dexGrid{position:relative;z-index:1;flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;
+    display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:11px;align-content:start;padding:13px 28px}
+  .dexCell{position:relative;height:125px;min-height:125px;padding:12px 7px 8px;box-sizing:border-box;
+    border:.8px solid #3b2a18;border-radius:50px 50px 10px 10px;background:#fcf5e6;
+    box-shadow:inset 0 0 0 3.7px #fcf5e6,inset 0 0 0 4px #3e322c;
+    display:flex;flex-direction:column;align-items:center;gap:12px;cursor:pointer;-webkit-tap-highlight-color:transparent}
+  .dexCell .pic{width:60px;height:60px;border-radius:0;overflow:visible;   /* 已收录只露糖本身，不做圆底 */
+    display:flex;align-items:center;justify-content:center;flex:none}
+  .dexCell .pic img{width:100%;height:100%;object-fit:contain}
+  .dexCell .nm{width:96px;max-width:100%;height:31px;min-height:31px;padding:0 2px;box-sizing:border-box;text-align:center;
+    font:12px/15px var(--f-cn);letter-spacing:.5px;color:#3b2a18;
+    display:flex;align-items:center;justify-content:center;overflow:hidden}
+  .dexCell.miss{cursor:default}
+  .dexCell.miss .pic{border-radius:35px;overflow:hidden;background:#f0e4cc;border:1px dashed rgba(59,42,24,.4)}
+  .dexCell.miss .q{font:17px/normal var(--f-cn);color:#3b2a18}
+  .dexCell.miss .nm{color:#9d9184}
+  #dexFoot{position:relative;z-index:1;flex:none;padding:8px 34px calc(8px + env(safe-area-inset-bottom));
+    display:flex;flex-direction:column;align-items:center;gap:8px}
+  #dexBar{width:100%;height:10px;border-radius:999px;border:1px solid #3b2a18;background:#fcf5e6;overflow:hidden;position:relative}
+  #dexBar i{position:absolute;left:0;top:0;bottom:0;width:0;
+    background:repeating-linear-gradient(45deg,#b1cde8 0 5px,#cc713d 5px 10px)}
+  #dexCnt{padding-bottom:2px;font:11px/normal var(--f-cn);letter-spacing:3px;color:#8b654f}
+
+  /* ── 图鉴详情（Figma「图鉴详情」1134:19144）── 点空白处关闭，没有 × */
+  #dexDetail{position:fixed;inset:0;z-index:30;display:none;background:transparent;
+    align-items:flex-end;justify-content:center;padding-bottom:6px;box-sizing:border-box}
+  #dexDetail.show{display:flex}
+  #dexDetail::before{content:"";position:absolute;inset:0;background:rgba(54,43,38,.4);opacity:0;pointer-events:none}
+  #dexDetail.show::before{animation:ddBackdrop .2s ease-out both}
+  #ddPanel{position:relative;width:min(327.5px,calc(100vw - 30px));max-height:calc(100vh - 12px);overflow:hidden;
+    background:#fcf5e6;border:1px solid #3b2a18;border-radius:151px 151px 10px 10px;
+    padding:35px 26px 26px;box-sizing:border-box;
+    filter:drop-shadow(0 15px 15px rgba(35,23,11,.25));
+    display:flex;flex-direction:column;align-items:center;gap:2.8px;color:#3b2a18}
+  /* 墨菲详情更短，单独上抬；用稳定的 box-shadow 避免 drop-shadow 在入场合成层上短暂叠成双影。 */
+  #ddPanel.mechanism{margin-bottom:55px;filter:none;box-shadow:0 15px 15px rgba(35,23,11,.25)}
+  /* mamo 终稿：详情是一张从画面下方推上来的纸牌，不再横向 0→1.039 拉伸。
+     只做纵向位移，不缩放、不旋转，避免像软糖被拽开；落稳后卸掉动画层。 */
+  #dexDetail.show #ddPanel{transform-origin:50% 100%;animation:ddCardRise .36s cubic-bezier(.22,1,.36,1) both}
+  #dexDetail.show #ddPanel.settled{animation:none;opacity:1;transform:none}
+  @keyframes ddBackdrop{0%{opacity:0}100%{opacity:1}}
+  @keyframes ddCardRise{
+    0%{opacity:0;transform:translateY(58px)}
+    100%{opacity:1;transform:translateY(0)}}
+  #ddPanel::before{content:"";position:absolute;left:6px;right:6px;top:6px;bottom:6.35px;pointer-events:none;z-index:0;
+    border:.5px solid rgba(59,42,24,.4);border-radius:145px 145px 6px 6px;
+    background:linear-gradient(to bottom,#cdd5db 0%,rgba(252,245,230,.5) 11.327%)}   /* 二稿:拱顶一抹蓝灰 */
+  #ddPanel>*{position:relative;z-index:1}
+  #ddPanel .dias{display:flex;align-items:center;justify-content:center;gap:7px;width:100%}
+  #ddPanel .dias i{width:8px;height:8px;display:block;transform:rotate(45deg)}
+  #ddPanel .dias i:nth-child(1){background:#b9cbdd}
+  #ddPanel .dias i:nth-child(2){background:#cd6b41}
+  #ddPanel .dias i:nth-child(3){background:#edc783}
+  #ddPanel .kicker{height:27.3px;display:flex;align-items:center;font:400 13px/normal var(--f-en);letter-spacing:4px;color:#3b2a18}
+  #ddStage{width:272px;max-width:100%;height:116px;display:flex;align-items:center;justify-content:center}
+  #ddFrame{position:relative;width:159px;height:100px;border-radius:50px;
+    padding:10px;box-sizing:border-box;display:flex;align-items:center;justify-content:center}
+  /* 糖果快照/画布以前压在 border 上，画布一接管就把椭圆上下中段盖掉，只剩左右括号。
+     装饰框单独放到内容之上，静止、转动和快照交接时都保持完整同一圈。 */
+  #ddFrame::after{content:"";position:absolute;inset:0;z-index:3;pointer-events:none;box-sizing:border-box;
+    border-style:solid;border-color:#d2b598;border-width:1px 0;border-radius:50px;opacity:.8}
+  #ddPoster,#ddCv{position:absolute;left:10px;top:10px;z-index:1;display:block;width:139px;height:80px;object-fit:contain}
+  #ddPoster{opacity:1;transition:opacity .12s ease}
+  #ddCv{opacity:0;transition:opacity .12s ease}
+  #ddFrame.preview-ready #ddPoster{opacity:0}
+  #ddFrame.preview-ready #ddCv{opacity:1}
+  #ddTitle{padding:7.2px 0 2px;font:18px/normal var(--f-cn);letter-spacing:1px;color:#3b2a18;text-align:center}
+  #ddSub{padding-top:1.2px;font:italic 400 12px/normal var(--f-en);color:#a8845a;text-align:center}
+  #ddPills{height:35px;padding:5px 0;box-sizing:border-box;display:flex;align-items:center;justify-content:center;gap:10px}
+  #ddPills span{display:inline-flex;align-items:center;padding:6px 16px;border-radius:999px;
+    font:11px/normal var(--f-cn);letter-spacing:2px;white-space:nowrap}
+  #ddPills .jar{background:#f7ead7;color:#2b2118}
+  #ddPills .cnt{border:.7px solid #3b2a18;color:#3b2a18}
+  #ddDeco{width:100%;height:17px;display:flex;align-items:center;justify-content:center;gap:8px}
+  #ddDeco span{width:80px;height:1px;background:#8b654f;opacity:.55}   /* svg 是 .5px #8B654F 线,半像素不着色→1px 压透明度等价 */
+  #ddDeco b{width:9px;height:9px;background:url('./assets/candyjar/ui/dex-gem3.svg') center/100% 100% no-repeat}
+  #ddSecs{align-self:stretch;padding:5.2px 0 15.19px;display:flex;flex-direction:column;gap:10px}
+  .ddSec{display:flex;flex-direction:column;gap:.93px;padding-bottom:.96px}
+  .ddSec b{display:inline-flex;align-items:center;justify-content:center;width:40px;height:18px;padding:0 2px;box-sizing:border-box;
+    font:400 11px/19.43px var(--f-cn);letter-spacing:4px;text-indent:4px;color:#5a3a1c;white-space:nowrap}
+  .ddSec.lore b{background:#545252;color:#fbf5e9}   /* 二稿:来历改深灰 */
+  .ddSec.taste b{background:#e8c380}
+  .ddSec.cause b{background:#b9cbdd}
+  .ddSec p{width:276px;max-width:100%;font:13.5px/24.98px var(--f-cn);color:#3b2a18;white-space:pre-line}
+  .ddSec.cause p{max-height:calc(24.98px * 6);overflow-y:auto;-webkit-overflow-scrolling:touch;
+    overscroll-behavior:contain;scrollbar-width:none}
+  .ddSec.cause p::-webkit-scrollbar{display:none}
+</style><script src="demo.js"></script>
+<link rel="icon" href="icon.png">
+</head><body class="boot">
+<div id="rotate"><div class="ph"></div><b>请把手机竖过来</b><i>Tournez votre téléphone, s'il vous plaît</i></div>
+<canvas id="c"></canvas>
+<button id="backBtn" aria-label="返回聊天"></button>
+<div class="hud top">
+  <div class="kicker">LA CONFISERIE DE CAUSALITÉ</div>
+  <div class="causality">CAUSALITY</div>
+  <div class="jarTitle">Candy Jar</div>
+  <i class="wave"></i>
+  <div class="cn">因果律软糖罐</div>
+  <div class="today-wrap"><i class="rope l"></i><i class="rope r"></i><button id="todayJarBtn">
+    <svg class="tj-top" viewBox="0 0 107 26" aria-hidden="true">
+      <path id="todayTopArc" d="M 14 23 Q 53.5 -4 93 23" fill="none"></path>
+      <text><textPath href="#todayTopArc" startOffset="50%" text-anchor="middle">TODAY'S JAR</textPath></text>
+      <circle class="tj-dot" cx="12" cy="22" r="1.4"/><circle class="tj-dot" cx="95" cy="22" r="1.4"/>
+    </svg>
+    <span>今日</span>
+    <svg class="tj-name" viewBox="0 0 107 39" aria-hidden="true">
+      <path id="todayArc" d="M 8 6 Q 53.5 30 99 6" fill="none"></path>
+      <text><textPath id="todayArcText" href="#todayArc" startOffset="50%" text-anchor="middle">…</textPath></text></svg>
+  </button></div>
+</div>
+<div class="hud bot" id="hint">
+  <button id="mineBtn"><i>✦</i><span class="t"></span></button>
+  <div id="botDeco"><span></span><em><i></i><i></i><i></i></em><span></span></div>
+  <div class="h1">点一颗糖看看 · 点玻璃摇罐子</div>
+  <div class="h2">Si vous l'osez, savourez le destin</div>
+</div>
+<div id="fxchips"><button id="fxchipMe" style="display:none"></button><button id="fxchipTa" style="display:none"></button></div>
+<button class="pickBtn" id="pickPrev"><img src="./assets/candyjar/ui/pick-arrow.svg" alt="">上一罐</button>
+<button class="pickBtn" id="pickNext"><img src="./assets/candyjar/ui/pick-arrow.svg" alt="">下一罐</button>
+<div id="sidebar">
+  <button id="shopBtn"><i class="dia"></i><span class="lb">商店</span><i class="en">BOUTIQUE</i></button>
+  <button id="dexBtn"><i class="dia"></i><span class="lb">图鉴</span><i class="en">INDEX</i></button>
+  <div id="paper"><b id="courageN">7</b><span class="lb">勇气</span><i class="en">COURAGE</i></div>
+  <span id="plusone">+1</span>
+</div>
+<div id="card">
+  <div class="reveal-confetti" aria-hidden="true"></div>
+  <div class="eyebrow">POUR TOI · TODAY'S PICK</div>
+  <div id="cardTitle">…</div>
+  <div class="dots"><i></i><i></i><i></i></div>
+  <div id="cardDesc">…</div>
+  <input id="feedMsg" placeholder="附一句想说的话(可不填,和糖一起送过去)">
+  <div id="cardBtns">
+    <button id="eatMe">自己吃</button><button id="eatHim">喂Ta吃</button><button id="putBack">放回去</button><button id="okBtn" style="display:none">知道了</button>
+  </div>
+</div>
+<div id="dex">
+  <i id="dexBand"></i>
+  <button id="dexBack" aria-label="返回">←</button>
+  <div id="dexHead">
+    <div class="kicker">LA COLLECTION</div>
+    <div class="t">Candy Dex</div>
+    <div class="sub">图鉴</div>
+    <i class="wave"></i>
+  </div>
+  <div id="dexTabs"></div>
+  <i id="dexTabLine"></i>
+  <div id="dexMurphyNote">此品类的糖果没有固定外形，它会乔装成普通糖果混在罐子中哦</div>
+  <div id="dexGrid"></div>
+  <div id="dexFoot"><div id="dexBar"><i></i></div><div id="dexCnt"></div></div>
+</div>
+<div id="shop">
+  <button id="shopBack" aria-label="返回">←</button>
+  <div id="shopPurse"><b id="shopCourage">0</b><span class="lb">勇气</span><span class="en">COURAGE</span></div>
+  <div id="shopHead">
+    <div class="kicker">LA BOUTIQUE</div>
+    <div class="t">Candy Shop</div>
+    <div class="sub">商店</div>
+    <i class="wave"></i>
+  </div>
+  <div id="shopTabs">
+    <button id="tabMystery"><b>·新糖果·</b><i>Les Nouveautés</i><span>给「今日罐」里增加新品种</span></button>
+    <button id="tabSelect"><b>·指名陈列·</b><i>À la Carte</i><span>已经吃过的糖会在这里售卖</span></button>
+  </div>
+  <div id="shopRefresh"></div>
+  <div id="shopBody"></div>
+  <div id="shopFoot"><div class="dias"><i></i><i></i><i></i></div></div>
+</div>
+<div id="shopConfirm"><div class="card">
+  <div class="eyebrow">LA BOUTIQUE</div>
+  <div class="ttl" id="scTitle">…</div>
+  <div class="preview" id="scPreview" aria-hidden="true"></div>
+  <div class="desc" id="scDesc"></div>
+  <div class="btns"><button class="ok" id="scOk">确定购买</button><button class="no" id="scNo">取 消</button></div>
+</div></div>
+<div id="shopToast"></div>
+<div id="jarBubble"></div>
+<div id="fxdt"><div id="fxdtCard">
+  <div class="dias"><i></i><i></i><i></i></div>
+  <div class="fr">Pour les cœurs courageux.</div>
+  <div class="ask">感觉怎么样？这颗</div>
+  <div class="nm" id="fxdtName">…</div>
+  <i class="wave"></i>
+  <div class="clock"><div><b>剩余</b><span id="fxdtTime">--:--</span></div></div>
+  <div class="tags" id="fxdtTags"><em class="who">你 的</em><em class="kind">外 显 症 状</em></div>
+  <div id="fxdtBody"></div>
+  <button id="fxdtOk">知 道 了</button>
+</div></div>
+<div id="dexDetail"><div id="ddPanel">
+  <div class="dias"><i></i><i></i><i></i></div>
+  <div class="kicker">CANDY DEX</div>
+  <div id="ddStage"><div id="ddFrame"><img id="ddPoster" alt=""><canvas id="ddCv" width="278" height="160"></canvas></div></div>
+  <div id="ddTitle">…</div>
+  <div id="ddSub">Les petites archives de la douceur.</div>
+  <div id="ddPills"><span class="jar" id="ddJar">…</span><span class="cnt" id="ddCount">已吃 0 次</span></div>
+  <div id="ddSecs">
+    <div class="ddSec lore"><b>来历</b><p id="ddLore"></p></div>
+    <div class="ddSec taste"><b>口味</b><p id="ddTaste"></p></div>
+    <div class="ddSec cause"><b>因果</b><p id="ddReveal"></p></div>
+  </div>
+  <div id="ddDeco"><span></span><b></b><span></span></div>
+</div></div>
+<div class="badge">CANDYJAR · 法式轻奢 v1</div>
+<script>
+window.onerror=function(m,src,l,c){ var d=document.createElement('div');
+  d.style.cssText='position:fixed;left:8px;right:8px;top:70px;z-index:99;background:#fff0ee;color:#a33;padding:8px 10px;border-radius:8px;font:11px/1.5 monospace;word-break:break-all';
+  d.textContent='ERR '+m+' @'+l+':'+c; document.body.appendChild(d); };
+</script>
+<script type="module">
+import * as T from './three-0160.module.min.js';
+import { OrbitControls } from './OrbitControls-0160.js';
+// r160 色彩管理默认开:十六进制色自动按 sRGB 收,不再手动 convertSRGBToLinear(转两次会变暗)
+// 左上返回=关闭。**绑定放在最前面**:原来挂在文件末尾,上游任何一行抛错它就永远绑不上
+// (mamo 2026-08-31 连报两次"点了没反应")。按钮本身不会被替换，只绑定一次，避免 click 冒泡后重复返回。
+(function(){
+  const embedded=(window.parent!==window);
+  if(embedded) document.body.classList.add('embedded');
+  function goBack(){
+    if(embedded){ try{ parent.postMessage({type:'candyjar:close'},location.origin); }catch(e){} }
+    else if(history.length>1) history.back();
+    else location.assign('/');
+  }
+  const b=document.getElementById('backBtn');
+  // 返回键按下也播通用那段（mamo 2026-09-02）。按下后整页就走/整屏就关，
+  // 按钮自己当场消失，所以照选糖卡先例等动画播完再执行，否则只看得到一帧。
+  if(b){ b.addEventListener('click',()=>afterCardButtonPress(b,goBack));
+    b.addEventListener('touchend',e=>{ e.preventDefault(); afterCardButtonPress(b,goBack); },{passive:false}); }
+})();
+
+function rnd(seed){ var s=seed>>>0; return function(){ s=(s*1664525+1013904223)>>>0; return s/4294967296; }; }
+
+// iPhone 广色域屏会把实时 WebGL canvas 与导出的 PNG 快照走成两条显示链；截图落盘时又统一进 sRGB，
+// 所以肉眼会看到 canvas 突然艳起来、截图却正常。三枚 renderer 全部显式锁到同一 sRGB 输出/绘图缓冲。
+function lockRendererSRGB(r){
+  r.outputColorSpace=T.SRGBColorSpace;
+  try{ const gl=r.getContext(); if(gl&&'drawingBufferColorSpace' in gl) gl.drawingBufferColorSpace='srgb'; }catch(_){}
+}
+
+const canvas=document.getElementById('c');
+const renderer=new T.WebGLRenderer({canvas,antialias:true});
+lockRendererSRGB(renderer);
+// iOS 上下文额度紧张时会**强收**已有的上下文(mamo 2026-09-02 截到罐子整个消失)。
+// 收走时浏览器先发 webglcontextlost:阻止默认行为才有机会拿回来;拿回来后资源全没了,
+// three 会在 webglcontextrestored 后重建内部状态，优先原地恢复；只有系统迟迟不还上下文才重载。
+// 商店/图鉴是独立全屏层：它们开着时绝不后台重载主罐；等玩家主动返回主罐再恢复。
+let mainContextRecoverTimer=0;
+let mainContextLost=false;
+function protectedCandyViewOpen(){
+  return document.getElementById('shop').classList.contains('show')||
+    document.getElementById('dex').classList.contains('show');
+}
+function armMainContextReload(){
+  clearTimeout(mainContextRecoverTimer);
+  mainContextRecoverTimer=setTimeout(()=>location.reload(),4000);
+}
+canvas.addEventListener('webglcontextlost',e=>{
+  e.preventDefault();
+  mainContextLost=true;
+  try{ releaseDD&&releaseDD(); }catch(_){}
+  if(snapR){ try{ snapR.dispose(); snapR.forceContextLoss(); }catch(_){} snapR=null; }
+  const t=document.getElementById('jarBubble');
+  if(t){ t.textContent='画面走神了一下，正在回来…'; t.classList.add('on'); }
+  clearTimeout(mainContextRecoverTimer);
+  if(!protectedCandyViewOpen()) armMainContextReload();
+},false);
+canvas.addEventListener('webglcontextrestored',()=>{
+  mainContextLost=false;
+  clearTimeout(mainContextRecoverTimer); mainContextRecoverTimer=0;
+  const t=document.getElementById('jarBubble');
+  if(t){ t.classList.remove('on'); t.classList.add('out'); }
+  try{ wake&&wake(); }catch(_){}
+},false);
+renderer.setPixelRatio(Math.min(1.75,window.devicePixelRatio||1));
+renderer.shadowMap.enabled=true; renderer.shadowMap.type=T.PCFSoftShadowMap;
+renderer.toneMapping=T.ACESFilmicToneMapping; renderer.toneMappingExposure=.9;
+
+const scene=new T.Scene();
+// 背景:纯 F7EBD7,免调色直出(不要地平线——mamo 2026-08-27:别加多余的东西)
+{ const m=new T.MeshBasicMaterial({color:0xf7ead7,side:T.BackSide}); m.toneMapped=false;
+  scene.add(new T.Mesh(new T.SphereGeometry(240,32,20),m)); }
+  // ⚠️ 三个数是一组,改任一个都要一起验:相机 maxDistance(竖屏实算≈118) < 背景球半径(240) < far(1200)。
+  //   球 < maxDistance → 相机穿出球外看到黑(v400);球 > far → 球被远裁面切掉,满屏全黑(v401)。
+// 罐底浅棕羽化垫(她点名要的那一圈,别的都不加)
+{ const cnv=document.createElement('canvas'); cnv.width=cnv.height=512;
+  const x=cnv.getContext('2d');
+  const g1=x.createRadialGradient(256,256,20,256,256,250);
+  g1.addColorStop(0,'rgba(210,180,142,.5)'); g1.addColorStop(.55,'rgba(224,199,163,.26)');
+  g1.addColorStop(1,'rgba(247,235,215,0)');
+  x.fillStyle=g1; x.fillRect(0,0,512,512);
+  const g2=x.createRadialGradient(256,256,4,256,256,120);
+  g2.addColorStop(0,'rgba(140,110,80,.34)'); g2.addColorStop(1,'rgba(140,110,80,0)');
+  x.fillStyle=g2; x.beginPath(); x.arc(256,256,120,0,7); x.fill();
+  const tex=new T.CanvasTexture(cnv); tex.colorSpace=T.SRGBColorSpace;
+  const mm=new T.MeshBasicMaterial({map:tex,transparent:true,depthWrite:false}); mm.toneMapped=false;
+  const mat=new T.Mesh(new T.CircleGeometry(13,48),mm);
+  mat.rotation.x=-Math.PI/2; mat.position.y=.02; scene.add(mat);
+  const sh=new T.Mesh(new T.PlaneGeometry(200,200),new T.ShadowMaterial({opacity:.07}));
+  sh.rotation.x=-Math.PI/2; sh.receiveShadow=true; scene.add(sh); }
+
+// 环境:手画等距全景。一张给场景光照(带底色),一张纯窗条黑底给玻璃高光层——
+// 加法混合只加窗条,不会加出弥漫白(fromScene 烘出来是糊的,手画才锐)
+let envShine=null;
+{ function paint(withBase){
+    const cnv=document.createElement('canvas'); cnv.width=1024; cnv.height=512;
+    const x=cnv.getContext('2d');
+    if(withBase){
+      const gr=x.createLinearGradient(0,0,0,512);
+      gr.addColorStop(0,'#c8b89e'); gr.addColorStop(.5,'#a2937a'); gr.addColorStop(1,'#5e5342');
+      x.fillStyle=gr;
+    } else x.fillStyle='#000';
+    x.fillRect(0,0,1024,512);
+    function strip(px,w,top,bot,color,blur){
+      x.save(); x.filter='blur('+blur+'px)'; x.fillStyle=color;
+      x.fillRect(px,top,w,bot-top); x.restore(); }
+    strip(150,26,110,280,'#fffdf4',3); strip(250,10,150,252,'#ffffff',2);
+    strip(700,15,120,266,'#dfe9f6',3);
+    x.save(); x.filter='blur(6px)'; x.fillStyle='#fff6df'; x.fillRect(0,20,1024,26); x.restore();
+    const tex=new T.CanvasTexture(cnv);
+    tex.mapping=T.EquirectangularReflectionMapping; tex.colorSpace=T.SRGBColorSpace;
+    const pm=new T.PMREMGenerator(renderer);
+    const out=pm.fromEquirectangular(tex).texture; pm.dispose(); tex.dispose();
+    return out; }
+  scene.environment=paint(true);
+  envShine=paint(false); }
+
+// 光(r160 物理光照:点光强度是烛光量级,别抄旧版小数)
+scene.add(new T.HemisphereLight(0xffedcd,0xd6c0a2,.32));
+const key=new T.DirectionalLight(0xffdfa8,1.9);   // mamo:光黄一点
+key.position.set(-13,20,14); key.castShadow=true;
+key.shadow.mapSize.set(2048,2048); key.shadow.radius=6;
+Object.assign(key.shadow.camera,{left:-16,right:16,top:16,bottom:-16});
+scene.add(key);
+const warm=new T.PointLight(0xffcf9a,2.2,14,2); warm.position.set(0,4.6,0); scene.add(warm);   // 物理光照单位是烛光,别抄旧版数值——14 就是罐里塞灯泡
+
+const JAR_NAMES=['','宿命论','维特根斯坦','桃花劫','庄周梦蝶','世界线收束'];   // 兜底：真名字看 jarName()（图鉴 _meta.jars[n].name）
+const _day=new Date(); const _dayStr=_day.getFullYear()+'-'+(_day.getMonth()+1)+'-'+_day.getDate();
+let _h=0; for(const ch of _dayStr) _h=(_h*31+ch.charCodeAt(0))>>>0;
+let curJar=_h%5+1;
+
+// ── 罐子:真透射玻璃(r160 新能力——真折射+磨砂+体积吸收,C4D 那个感觉) ──
+const jar=new T.Group(); scene.add(jar);
+const WALL=.42;
+const prof=[[2.8,.02],[4.1,.5],[4.7,2.4],[4.85,5.0],[4.5,7.6],[3.7,9.0],[3.35,9.8],[3.4,10.8],[3.62,11.2],[3.66,11.7]];
+const spline=new T.SplineCurve(prof.map(p=>new T.Vector2(p[0],p[1])));
+const pts=[new T.Vector2(0,.02),...spline.getPoints(44)];
+const glassGeo=new T.LatheGeometry(pts,80);
+// 玻璃色(mamo 2026-08-29 二稿):①-④ 一律原青玻璃,只有罐⑤混合罐用茶晶色
+// (茶晶=烟熏石英,棕、低饱和,不发黄)。半透明玻璃的色彩由 color×opacity 共同决定。
+const CLEAR={c:0xeef7f2,o:.10};
+const JAR_GLASS={1:CLEAR,2:CLEAR,3:CLEAR,4:CLEAR,5:{c:0xa6712d,o:.15}};   // 罐⑤茶晶:更透 .22→.15;色相往橘 42°→34°、饱和 +6、明度 -7(mamo 2026-08-31)
+const glassMats=[];   // 登记所有玻璃材质,切罐时统一换色
+function applyJarGlass(){
+  const jg=viewMine?{c:0xb9a3d8,o:.14}:(JAR_GLASS[curJar]||JAR_GLASS[1]);   // 储藏罐=淡紫(mamo:别跟今日罐的颜色走)
+  const deep=(jg.o||.14)>.16;
+  for(const m of glassMats){ m.color=new T.Color(jg.c);
+    if(m.userData.baseOpacity==null) m.userData.baseOpacity=m.opacity;
+    if(m.userData.baseEnv==null) m.userData.baseEnv=m.envMapIntensity;
+    m.opacity=Math.min(.92, m.userData.baseOpacity*((jg.o||.10)/.10));
+    m.envMapIntensity=m.userData.baseEnv*(deep?.62:1);   // 深色玻璃上别飘一层白亮反光
+  }
+  if(typeof shine!=='undefined'&&shine) shine.material.envMapIntensity=deep?1.1:1.6;
+  if(typeof rimGlow!=='undefined'&&rimGlow) rimGlow.material.uniforms.uC.value=new T.Color(jg.a);
+}
+function mkGlass(extra,noTint){
+  const jg=noTint?CLEAR:(JAR_GLASS[curJar]||JAR_GLASS[1]);
+  // 透射预算全给糖了(引擎限制:transmission 材质互相不可见,两边只能给一个)。
+  // 玻璃走半透明+强环境反光+清漆高光——mamo 2026-08-27 点名"光泽提亮、高光要回来"
+  const m=new T.MeshPhysicalMaterial(Object.assign({
+    color:jg.c, metalness:0, roughness:.02,
+    transparent:true, opacity:jg.o||.14,
+    clearcoat:1, clearcoatRoughness:.03,
+    envMapIntensity:3.2, side:T.FrontSide, depthWrite:false}, extra||{}));
+  if(!noTint) glassMats.push(m);   // noTint=不跟罐色走(罐口密封圈)
+  return m;
+}
+const glassBack=new T.Mesh(glassGeo,mkGlass({side:T.BackSide,opacity:.07,envMapIntensity:1.4}));
+glassBack.renderOrder=9; jar.add(glassBack);
+const glass=new T.Mesh(glassGeo,mkGlass()); glass.renderOrder=20; jar.add(glass);
+// 罐口厚唇 + 厚玻璃底(厚度感)
+const lip=new T.Mesh(new T.TorusGeometry(3.66-WALL/2+.06,WALL*.62,18,64),mkGlass({opacity:.4},true));   // 罐口圈:白色不变
+lip.rotation.x=Math.PI/2; lip.position.y=11.7; lip.renderOrder=21; jar.add(lip);
+const slab=new T.Mesh(new T.CylinderGeometry(3.55,3.9,WALL+.18,64),mkGlass({opacity:.3}));
+slab.position.y=(WALL+.18)/2+.02; slab.renderOrder=8; jar.add(slab);
+// 玻璃盖
+const lid=new T.Group();
+const lidPts=[new T.Vector2(0,0),new T.Vector2(3.9,0),new T.Vector2(4.05,.28),new T.Vector2(3.6,.62),
+  new T.Vector2(1.2,.72),new T.Vector2(.95,1.0),new T.Vector2(.9,1.75),new T.Vector2(0,1.9)];
+const lidMesh=new T.Mesh(new T.LatheGeometry(lidPts,64),mkGlass({opacity:.17}));
+lidMesh.renderOrder=21; lid.add(lidMesh);
+lid.position.y=11.82; jar.add(lid);
+// 冷色轮廓光(常在,和暖直射光拉开——mamo 拍过,保留但收敛)
+function mkRim(color,power,intensity){
+  const sm=new T.ShaderMaterial({transparent:true,depthWrite:false,blending:T.AdditiveBlending,
+    uniforms:{uC:{value:new T.Color(color)},uP:{value:power},uI:{value:intensity}},
+    vertexShader:'varying vec3 vN;varying vec3 vV;void main(){vN=normalize(normalMatrix*normal);vec4 mv=modelViewMatrix*vec4(position,1.);vV=normalize(-mv.xyz);gl_Position=projectionMatrix*mv;}',
+    fragmentShader:'uniform vec3 uC;uniform float uP,uI;varying vec3 vN;varying vec3 vV;void main(){float f=pow(1.-abs(dot(normalize(vN),normalize(vV))),uP);gl_FragColor=vec4(uC*f*uI,f*.6);}'});
+  return sm;
+}
+// 高光层:半透明玻璃的反光被 opacity(.14) 乘掉了,单独一层加法混合才亮得起来
+function mkShine(envI){
+  // 必须 metalness:1——非金属只反射约 4% 的光,高光永远出不来;
+  // 金属反射色=材质色×envMap,配纯窗条黑底贴图=只反射那几条窗
+  return new T.MeshStandardMaterial({color:0xffffff,metalness:1,roughness:.04,
+    envMap:envShine,envMapIntensity:envI,blending:T.AdditiveBlending,
+    transparent:true,depthWrite:false,side:T.FrontSide});
+}
+const shine=new T.Mesh(glassGeo,mkShine(1.6)); shine.renderOrder=23; jar.add(shine);
+const lidShine=new T.Mesh(lidMesh.geometry,mkShine(1.6)); lidShine.renderOrder=24; lid.add(lidShine);
+
+// ── 罐身标签(mamo 参考糖果店贴纸;先做一版试效果,样式定了再换她的设计) ──
+const JAR_LABEL_TEXT={1:['宿命论','Fatalism'],2:['维特根斯坦','Wittgenstein'],
+  3:['桃花劫','Amour Fatal'],4:['庄周梦蝶','Le Papillon'],
+  5:['世界线收束','Convergence'],
+  mine:['我的储藏罐','Ma Réserve']};   // 储藏罐有自己的立牌,不跟今日罐走
+function makeLabelTex(){
+  const lb=viewMine?JAR_LABEL_TEXT.mine:(JAR_LABEL_TEXT[curJar]||JAR_LABEL_TEXT[1]);
+  const t=viewMine?lb:[jarName(curJar)||lb[0],lb[1]];   // 中文名以图鉴为准，外文副标留在这儿（花体主标）
+  const W=640,H=360,cn=document.createElement('canvas'); cn.width=W; cn.height=H;
+  const x=cn.getContext('2d');
+  // 满幅不透明(带 alpha 会和后方玻璃混排出一圈方框);上亮下暗的纸面渐变(mamo)
+  const g=x.createLinearGradient(0,0,0,H);
+  g.addColorStop(0,'#fffefb'); g.addColorStop(.45,'#fdf7ea'); g.addColorStop(1,'#efe3cd');
+  x.fillStyle=g; x.fillRect(0,0,W,H);
+  x.strokeStyle='rgba(150,120,88,.5)'; x.lineWidth=4; x.strokeRect(20,20,W-40,H-40);
+  x.strokeStyle='rgba(150,120,88,.28)'; x.lineWidth=1.6; x.strokeRect(32,32,W-64,H-64);
+  x.textAlign='center';
+  // 英文花体主标:按牌宽自动收字号,长名(Wittgenstein/Convergence)不再出框
+  const maxW=W-110;
+  let fs=104;
+  x.font='italic 700 '+fs+'px "Snell Roundhand","Apple Chancery","Segoe Script","Brush Script MT",cursive';
+  while(x.measureText(t[1]).width>maxW && fs>44){ fs-=4;
+    x.font='italic 700 '+fs+'px "Snell Roundhand","Apple Chancery","Segoe Script","Brush Script MT",cursive'; }
+  x.fillStyle='#5b4126'; x.fillText(t[1],W/2,H/2+12);
+  // 中文楷体小字,两侧点装饰(mamo)
+  x.fillStyle='#a5875f';
+  x.font='36px "Kaiti SC","STKaiti","MamoKai",KaiTi,serif';
+  x.fillText('· '+t[0]+' ·',W/2,H-64);
+  const tex=new T.CanvasTexture(cn); tex.colorSpace=T.SRGBColorSpace;
+  tex.anisotropy=4; return tex;
+}
+let labelGroup=null;
+function applyJarLabel(){
+  if(labelGroup){ scene.remove(labelGroup);
+    labelGroup.traverse(o=>{ if(o.material){ if(o.material.map) o.material.map.dispose(); o.material.dispose(); }
+      if(o.geometry) o.geometry.dispose(); }); }
+  // 立牌摆在罐子前方桌面(mamo:贴罐身挡糖;她图2画的位置)——不进 jar 组,所以摇罐时它不跟着晃
+  labelGroup=new T.Group();
+  const W=3.2, H=1.85, tex=makeLabelTex();
+  const mat=new T.MeshStandardMaterial({map:tex,roughness:.72,metalness:0,
+    side:T.DoubleSide,emissive:0xffffff,emissiveMap:tex,emissiveIntensity:.3});
+  // 对折卡纸:正面印字、背面留白,底边分开=侧看一个 A(mamo 要的帐篷式立牌)
+  const lean=.2;
+  const front=new T.Mesh(new T.PlaneGeometry(W,H),mat);
+  front.position.set(0,Math.cos(lean)*H/2, Math.sin(lean)*H/2);
+  front.rotation.x=-lean; front.castShadow=true; labelGroup.add(front);
+  const backMat=new T.MeshStandardMaterial({color:0xf3e8d4,roughness:.8,metalness:0,side:T.DoubleSide});
+  const back=new T.Mesh(new T.PlaneGeometry(W,H),backMat);
+  back.position.set(0,Math.cos(lean)*H/2, -Math.sin(lean)*H/2);
+  back.rotation.x=lean; back.castShadow=true; labelGroup.add(back);
+  const ridge=new T.Mesh(new T.BoxGeometry(W,.018,.26),backMat);   // 折纸顶端的一小段横折面(mamo 图2),薄贴不外扩
+  ridge.position.set(0,Math.cos(lean)*H+.005,0); labelGroup.add(ridge);
+  labelGroup.position.set(-1.9,0,6.0);         // 正面看往左挪(mamo 图5)
+  labelGroup.rotation.y=Math.atan2(.5,1)+.1;   // 基本正对相机,只歪一点点
+  scene.add(labelGroup);
+}
+
+const rimGlow=new T.Mesh(glassGeo,mkRim(0xbfe8d8,3.4,.5)); rimGlow.renderOrder=22; jar.add(rimGlow);
+
+// ── 糖果:图鉴混装(色卡与调色间同源——mamo 在 candylab 调的参数从本机直读) ──
+const DEFAULTS=[
+  {name:'可乐',grad:['#a27a5d','#e69c60','#e1d5bc'],mid:.55,trans:.35,jars:[1]},
+  {name:'橘子汽水',grad:['#eebc77','#eac099','#f6ab09'],mid:.5,trans:.25,jars:[2]},
+  {name:'柠檬',grad:['#f5e5ad','#eae0c3','#d7cf89'],mid:.6,trans:.06,jars:[2,4]},
+  {name:'青苹果',grad:['#81a343','#c1cbaa','#d0d798'],mid:.52,trans:.17,jars:[4,1]},
+  {name:'葡萄',grad:['#eab8e3','#d2a2c9','#9c54ab'],mid:.32,trans:.23,jars:[3]},
+  {name:'草莓奶',grad:['#bf4545','#e895a8','#e4d8d8'],mid:.5,trans:.15,jars:[3]},
+  {name:'树莓红',grad:['#bf6983','#d58190','#d45e70'],mid:.5,trans:.15,jars:[3]},
+  {name:'紫藤',grad:['#8a6cb8','#c1a6e3','#eee4f8'],mid:.5,trans:.18,jars:[4]},
+  {name:'焦糖咖啡',grad:['#e1a989','#ad8771','#a98875'],mid:.5,trans:.15,jars:[1,2]},
+  {name:'芭乐',grad:['#f0aab4','#f0aab4','#f0aab4'],mid:.5,trans:.7,jars:[3]},
+  {name:'绵云',grad:['#eceff3','#cad4de','#a7c0d7'],mid:.5,trans:.05,jars:[2]},
+  {name:'蜜桃',grad:['#ff9785','#ecc39c','#dcb0ac'],mid:.5,trans:.15,jars:[1]},
+  {name:'荔枝',grad:['#ffffff','#e3d8d4','#deccc4'],mid:.47,trans:.29,jars:[4,1]},
+];
+function toGrad(sv){ if(sv.solid){ sv.grad=[sv.solid,sv.solid,sv.solid]; sv.mid=sv.mid||.5; delete sv.solid; }
+  if(sv.jar&&!sv.jars){ sv.jars=[sv.jar]; delete sv.jar; } return sv; }
+function loadSchemes(){
+  const out=DEFAULTS.map(d=>JSON.parse(JSON.stringify(d)));
+  try{ const saved=JSON.parse(localStorage.getItem('candylab_schemes_v1')||'[]');
+    for(const sv of saved){ const t=out.find(x=>x.name===sv.name); if(t){ delete sv._dot; Object.assign(t,toGrad(sv)); } }
+  }catch(e){}
+  return out;
+}
+const MM_BASE=['#7e5135','#b43d22','#ffb10a','#709dff','#f4efe6'];   // mamo 定稿色+米白(百搭)
+function loadMM(){
+  const out=MM_BASE.slice();
+  try{ const mh=localStorage.getItem('candylab_mm_hex_v1');
+    if(mh&&out.indexOf(mh)<0) out.push(mh); }catch(e){}
+  return out;
+}
+let SCHEMES=loadSchemes(), MM_HEXES=loadMM();
+// 真图鉴(样机副本在 web/assets/candyjar/;正式版由后端下发)
+let CATALOG=null, DEF=new Map();
+const MM_ID={'#7e5135':'mm_choco','#b43d22':'mm_red','#ffb10a':'mm_yellow','#709dff':'mm_blue','#f4efe6':'mm_white',
+  '#d8a93e':'mm_gold','#cbb289':'mm_hourglass','#5a5450':'mm_swap'};   // 2026-09-01 新三颗(交换=深灰当双色近似)
+let SERVER=null;   // 后端真账本(罐内容/图鉴/勇气/药效);拿不到就退回本地样机数据
+fetch('./assets/candyjar/candies.json?v='+Date.now()).then(r=>r.json()).then(d=>{
+  CATALOG=d;
+  for(const c of d.candies) DEF.set(c.scheme+'|'+c.shape, c);
+  return fetch('/candyjar').then(r=>r.ok?r.json():null).catch(()=>null);
+}).then(sv=>{
+  if(sv){
+    SERVER=sv;
+    if(sv.jar) curJar=sv.jar.jar||curJar;
+    dexCount=sv.dex||{};
+    if(Array.isArray(sv.once_used)) onceUsed=sv.once_used;
+    if(Array.isArray(sv.reserve)){ pocket=sv.reserve.map(id=>({id})); savePocket(); }   // 后端是权威:本地幽灵糖(早期演示遗留)在这里被清掉
+    courage=(sv.courage&&sv.courage.user!=null)?sv.courage.user:courage;
+    if(sv.active) applyServerEffects(sv.active);
+    setJarText(); applyJarGlass(); applyJarLabel(); updCourage();
+    if(!sv.jar&&sv.choose){ enterPick(sv.choose); document.body.classList.remove('boot'); return; }   // 今天还没开罐：先选罐（enterPick 自己 fillJar）
+  }
+  document.body.classList.remove('boot');
+  fillJar();
+}).catch(()=>{ document.body.classList.remove('boot'); fillJar(); });
+// 用后端账本校准两枚牌。**两边各自独立判断**——
+// 旧版在「我没有药效」时直接 return，压根走不到处理 Ta 的那几行：
+// 喂糖给他 → 前端刚挂上牌 → 服务器回执一到就把牌抹掉了（mamo 2026-08-31 报"闪一下就没"）。
+function applyServerEffects(list){
+  const arr=list||[];
+  const pick=t=>{
+    const a=arr.filter(x=>x.target===t&&x.minutes_left>0)[0];   // 0 分钟=只剩对话轮保底,UI 不挂
+    if(!a) return null;
+    const cat=CATALOG&&CATALOG.candies.find(c=>c.effect===a.effect);
+    return cat?{cat, until:Date.now()+a.minutes_left*60000}:null;
+  };
+  fxMe=pick('user');
+  fxTa=pick('ai');
+}
+const MM_JAR_DEF={'#7e5135':[3],'#b43d22':[2,1],'#ffb10a':[1],
+  '#709dff':[2],'#f4efe6':[4]};   // mamo 2026-08-29 定稿分罐(罐⑤=全池,不需分配)   // mamo 配额:罐1巧克力/罐2黄+米白/罐3橙红/罐4蓝
+function loadMMJars(){ const out=JSON.parse(JSON.stringify(MM_JAR_DEF));
+  try{ const j=JSON.parse(localStorage.getItem('candylab_mm_jars_v1')||'{}');
+    for(const k in j) out[k]=Array.isArray(j[k])?j[k]:[j[k]]; }catch(e){}
+  return out; }
+let MM_JARS=loadMMJars();
+let mmEvery=7;        // 混豆比例:7=少(mamo 拍板默认),4=多,0=无
+
+// 造型(与调色间同源):八种 + mm 豆体
+function smooth(geo){
+  const g=geo; g.computeVertexNormals();
+  const pos=g.attributes.position, nor=g.attributes.normal, map=new Map();
+  const key2=i=>pos.getX(i).toFixed(3)+','+pos.getY(i).toFixed(3)+','+pos.getZ(i).toFixed(3);
+  for(let i=0;i<pos.count;i++){ const k=key2(i);
+    let e=map.get(k); if(!e){e=[0,0,0];map.set(k,e);}
+    e[0]+=nor.getX(i); e[1]+=nor.getY(i); e[2]+=nor.getZ(i); }
+  for(let i=0;i<pos.count;i++){ const e=map.get(key2(i));
+    const l=Math.hypot(e[0],e[1],e[2])||1; nor.setXYZ(i,e[0]/l,e[1]/l,e[2]/l); }
+  nor.needsUpdate=true; return g;
+}
+function scaleUV(g,su,sv){ const uv=g.attributes.uv;
+  for(let i=0;i<uv.count;i++) uv.setXY(i,uv.getX(i)*su,uv.getY(i)*sv);
+  uv.needsUpdate=true; return g; }
+function roundedPoly(n,r,cr){
+  const sh=new T.Shape(), P=[];
+  for(let k=0;k<n;k++){ const a=k/n*Math.PI*2-Math.PI/2;
+    P.push(new T.Vector2(Math.cos(a)*r,Math.sin(a)*r)); }
+  for(let k=0;k<=n;k++){
+    const p=P[k%n], prev=P[(k-1+n)%n], next=P[(k+1)%n];
+    const vIn=p.clone().sub(prev).normalize(), vOut=next.clone().sub(p).normalize();
+    const a1=p.clone().sub(vIn.multiplyScalar(cr)), a2=p.clone().add(vOut.multiplyScalar(cr));
+    if(k===0) sh.moveTo(a2.x,a2.y);
+    else { sh.lineTo(a1.x,a1.y); sh.quadraticCurveTo(p.x,p.y,a2.x,a2.y); }
+  }
+  return sh;
+}
+function starShape(outer,inner,cr){
+  const sh=new T.Shape(), P=[];
+  for(let k=0;k<10;k++){ const a=k/10*Math.PI*2-Math.PI/2, r=(k%2?inner:outer);
+    P.push(new T.Vector2(Math.cos(a)*r,Math.sin(a)*r)); }
+  for(let k=0;k<=10;k++){
+    const p=P[k%10], prev=P[(k-1+10)%10], next=P[(k+1)%10];
+    const vIn=p.clone().sub(prev), vOut=next.clone().sub(p);
+    const cIn=Math.min(cr,vIn.length()*.45), cOut=Math.min(cr,vOut.length()*.45);
+    const a1=p.clone().sub(vIn.normalize().multiplyScalar(cIn));
+    const a2=p.clone().add(vOut.normalize().multiplyScalar(cOut));
+    if(k===0) sh.moveTo(a2.x,a2.y);
+    else { sh.lineTo(a1.x,a1.y); sh.quadraticCurveTo(p.x,p.y,a2.x,a2.y); }
+  }
+  return sh;
+}
+function beanGeo(){
+  const g=new T.CapsuleGeometry(.72,.5,12,28);
+  g.rotateZ(Math.PI/2); g.scale(1,.9,.95);
+  const pos=g.attributes.position;
+  for(let i=0;i<pos.count;i++){
+    const x=pos.getX(i), y=pos.getY(i), z=pos.getZ(i);
+    pos.setY(i, y + x*x*.34 - .1); pos.setZ(i, z*(1-Math.abs(x)*.1));
+  }
+  pos.needsUpdate=true; g.computeVertexNormals();
+  const uv=g.attributes.uv;
+  for(let i=0;i<pos.count;i++){
+    uv.setXY(i, Math.atan2(pos.getZ(i),pos.getY(i))/(Math.PI*2)+.5, pos.getX(i)*.62); }
+  uv.needsUpdate=true; return g;
+}
+function wagashiGeo(){
+  const pts=[]; pts.push(new T.Vector2(0,0));
+  for(let a=0;a<=5;a++){ const t=a/5*Math.PI/2;
+    pts.push(new T.Vector2(.72+Math.sin(t)*.26, .02+(1-Math.cos(t))*.26)); }
+  pts.push(new T.Vector2(.98,.62)); pts.push(new T.Vector2(.9,1.0));
+  for(let a=0;a<=6;a++){ const t=a/6*Math.PI/2;
+    pts.push(new T.Vector2(.86-Math.sin(t)*.36, 1.05+(1-Math.cos(t))*.2)); }
+  pts.push(new T.Vector2(.42,1.26)); pts.push(new T.Vector2(.3,1.21));
+  pts.push(new T.Vector2(.18,1.14)); pts.push(new T.Vector2(.08,1.10)); pts.push(new T.Vector2(0,1.09));
+  const g=new T.LatheGeometry(pts,40); g.translate(0,-.65,0); return g;
+}
+function flowerGeo(){
+  const g=new T.SphereGeometry(1,56,32);
+  const pos=g.attributes.position;
+  const P=5, d=.52, Rp=.62, STEP=Math.PI*2/P;
+  for(let i=0;i<pos.count;i++){
+    const x=pos.getX(i), y=pos.getY(i), z=pos.getZ(i);
+    let th=Math.atan2(z,x); th=((th%STEP)+STEP)%STEP-STEP/2;
+    const rf=d*Math.cos(th)+Math.sqrt(Math.max(0,Rp*Rp-d*d*Math.sin(th)*Math.sin(th)));
+    const w=Math.pow(Math.max(0,1-y*y),.45);
+    const lobe=1+(rf-1)*w;
+    let nx=x*lobe, nz=z*lobe, ny=y*.55;
+    if(y>0) ny-=.34*Math.exp(-(nx*nx+nz*nz)/.2);
+    pos.setXYZ(i,nx,ny,nz);
+  }
+  pos.needsUpdate=true; g.computeVertexNormals(); return g;
+}
+const BEV={depth:.8,bevelEnabled:true,bevelThickness:.32,bevelSize:.3,bevelSegments:6,curveSegments:8};
+const CANDY_GEOS=[
+  (()=>{const g=new T.SphereGeometry(1,28,20); g.scale(1,.8,1); return g;})(),
+  smooth(new T.ExtrudeGeometry(roundedPoly(4,1.0,.34),BEV)),
+  smooth(new T.ExtrudeGeometry(roundedPoly(3,1.18,.3),BEV)),
+  smooth(new T.LatheGeometry([[0,0],[.92,0],[.88,.3],[.72,.78],[.4,1.12],[0,1.28]]
+    .map(q=>new T.Vector2(q[0],q[1])),30)),
+  beanGeo(),
+  smooth(new T.ExtrudeGeometry(starShape(1.22,.71,.42),
+    {depth:.7,bevelEnabled:true,bevelThickness:.26,bevelSize:.24,bevelSegments:6,curveSegments:8})),
+  wagashiGeo(), flowerGeo(),
+];
+CANDY_GEOS[1].center(); CANDY_GEOS[2].center(); CANDY_GEOS[3].translate(0,-.6,0); CANDY_GEOS[5].center();
+CANDY_GEOS[2].rotateZ(Math.PI);
+scaleUV(CANDY_GEOS[1],.35,.35); scaleUV(CANDY_GEOS[2],.35,.35); scaleUV(CANDY_GEOS[5],.3,.3);
+const MM_GEO=(()=>{const g=new T.SphereGeometry(1,26,18); g.scale(1,.56,1); return g;})();
+const GEO_R=CANDY_GEOS.map(g=>{ g.computeBoundingSphere(); return g.boundingSphere.radius; });
+const SHAPE_NAMES=['圆珠','方糖','三角','小包子','弯豆','五角星','和果子','花果子'];
+
+function sugarMaps(size){
+  const h=document.createElement('canvas'); h.width=h.height=size;
+  const hx=h.getContext('2d'), R=rnd(99);
+  hx.fillStyle='#808080'; hx.fillRect(0,0,size,size);
+  for(let i=0;i<2600;i++){ const g=Math.floor(150+R()*95);
+    hx.fillStyle='rgb('+g+','+g+','+g+')';
+    hx.beginPath(); hx.arc(R()*size,R()*size,.5+R()*1.5,0,7); hx.fill(); }
+  for(let i=0;i<130;i++){ const g=Math.floor(30+R()*45);
+    hx.fillStyle='rgb('+g+','+g+','+g+')';
+    hx.beginPath(); hx.arc(R()*size,R()*size,1.4+R()*3.2,0,7); hx.fill(); }
+  const src=hx.getImageData(0,0,size,size).data;
+  const H=(x,y)=>src[(((y+size)%size)*size+((x+size)%size))*4]/255;
+  const nc=document.createElement('canvas'); nc.width=nc.height=size;
+  const nx2=nc.getContext('2d'), img=nx2.createImageData(size,size);
+  for(let y=0;y<size;y++) for(let x=0;x<size;x++){
+    let ax=-(H(x+1,y)-H(x-1,y))*7, ay=-(H(x,y+1)-H(x,y-1))*7, az=1;
+    const L=Math.hypot(ax,ay,az); ax/=L; ay/=L; az/=L;
+    const i=(y*size+x)*4;
+    img.data[i]=(ax*.5+.5)*255; img.data[i+1]=(ay*.5+.5)*255;
+    img.data[i+2]=(az*.5+.5)*255; img.data[i+3]=255; }
+  nx2.putImageData(img,0,0);
+  const nm=new T.CanvasTexture(nc); nm.wrapS=nm.wrapT=T.RepeatWrapping; nm.repeat.set(2.6,2.6);
+  const rm=new T.CanvasTexture(h);  rm.wrapS=rm.wrapT=T.RepeatWrapping; rm.repeat.set(2.6,2.6);
+  return {normalMap:nm, roughnessMap:rm};
+}
+const SUGAR=sugarMaps(256);
+
+const itemsGroup=new T.Group(); jar.add(itemsGroup);
+const outsideGroup=new T.Group(); scene.add(outsideGroup);   // 罐外的糖:落地上,不跟罐子摇
+const shakables=[];
+const MM_HEX=Object.fromEntries(Object.entries(MM_ID).map(([h,id])=>[id,h]));   // 反查:id→颜色(图鉴/商店用本色)
+// 罐里的机制糖穿哪件外衣:从当前罐的 mm 配额里挑,按 id+罐号确定性取,不随重画跳色。
+function mmDisguise(id){
+  let pool=MM_BASE.filter(h=>(MM_JARS[h]||[1]).includes(curJar));
+  if(curJar===5||!pool.length) pool=MM_BASE;
+  let h=0; for(const ch of (id+'|'+curJar)) h=(h*31+ch.charCodeAt(0))>>>0;
+  return pool[h%pool.length];
+}
+function candy(i,R,forceCat){
+  const g=new T.Group();
+  if((forceCat&&forceCat.id&&forceCat.id.startsWith('mm_')) || (!forceCat && mmEvery>0 && i%mmEvery===mmEvery-1)){
+    if(forceCat){   // 真库存里的 mm 豆:颜色跟着**当前罐**走,不按 id 上色
+      // mamo 2026-09-04:机制糖要伪装成这一罐的配色,不然桃花劫里蹦出黄豆白豆很出戏。
+      // 颜色只是伪装、不再指示机制;同一颗糖在同一罐里取色确定(id+罐 做种子),重画不会变。
+      const hex2=mmDisguise(forceCat.id);
+      const m2=new T.MeshPhysicalMaterial({color:new T.Color(hex2),
+        roughness:.13,clearcoat:1,clearcoatRoughness:.05,envMapIntensity:.9});
+      const mesh2=new T.Mesh(MM_GEO,m2); mesh2.castShadow=true; g.add(mesh2);
+      const sc2=.82+R()*.14; g.scale.setScalar(sc2); g.userData.r=sc2*.92;
+      g.userData.kind='mm'; g.userData.cat=forceCat;
+      return g;
+    }
+    let pool=MM_BASE.filter(h=>(MM_JARS[h]||[1]).includes(curJar));
+    if(curJar===5||!pool.length) pool=MM_BASE;
+    const hex=pool[(R()*pool.length)|0];
+    const m=new T.MeshPhysicalMaterial({color:new T.Color(hex),
+      roughness:.13,clearcoat:1,clearcoatRoughness:.05,envMapIntensity:.9});
+    const mesh=new T.Mesh(MM_GEO,m); mesh.castShadow=true; g.add(mesh);
+    const sc=.82+R()*.14; g.scale.setScalar(sc); g.userData.r=sc*.92;
+    g.userData.kind='mm';
+    g.userData.cat=CATALOG?CATALOG.candies.find(c=>c.id===MM_ID[hex]):null;
+    return g;
+  }
+  // 软糖:只出图鉴里定义过的品种(颜色×造型),罐⑤=全部
+  let defs=CATALOG?CATALOG.candies.filter(c=>c.jar>0&&(curJar===5||c.jar===curJar)):[];
+  let entry=null, sch=null, gi=0;
+  if(forceCat){   // 我的罐子:糖是买来的哪颗就长哪样
+    entry=forceCat;
+    sch=SCHEMES.find(x=>x.name===entry.scheme);
+    gi=SHAPE_NAMES.indexOf(entry.shape);
+  }else if(defs.length){
+    entry=defs[(R()*defs.length)|0];
+    sch=SCHEMES.find(x=>x.name===entry.scheme);
+    gi=SHAPE_NAMES.indexOf(entry.shape);
+  }
+  if(!sch){   // 图鉴没到位时退回随机(首帧)
+    let sPool=(curJar===5)?SCHEMES:SCHEMES.filter(x=>(x.jars||[1]).includes(curJar));
+    if(!sPool.length) sPool=SCHEMES;
+    sch=sPool[(R()*sPool.length)|0];
+    gi=(i*3+((R()*5)|0))%CANDY_GEOS.length;
+  }
+  const t=sch.trans!=null?sch.trans:.15;
+  const geo=CANDY_GEOS[gi<0?0:gi];
+  const sc=.8+R()*.2;   // 提前:uHH 要用
+  g.userData.kind='gummy'; g.userData.scheme=sch.name;
+  g.userData.shape=SHAPE_NAMES[gi<0?0:gi]; g.userData.cat=entry;
+  const bot=new T.Color(sch.grad[0]), mid=new T.Color(sch.grad[1]), top=new T.Color(sch.grad[2]);
+  const lum=mid.r*.2126+mid.g*.7152+mid.b*.0722;
+  const m=new T.MeshPhysicalMaterial({
+    color:0xffffff, transmission:.96, thickness:1.15-.3*t, ior:1.42,
+    roughness:.9-.55*t, clearcoat:.22, clearcoatRoughness:.62-.3*t,
+    attenuationColor:mid.clone(), attenuationDistance:1.15*(0.4+t*4.2),
+    envMapIntensity:.55+.5*t,
+    normalMap:SUGAR.normalMap, normalScale:new T.Vector2(.6,.6),
+    roughnessMap:SUGAR.roughnessMap});
+  const tint=mid.clone().offsetHSL(0,.06,(1-lum)*.34).multiplyScalar(.3+(1-lum)*1.0);
+
+  m.onBeforeCompile=sh=>{
+    sh.uniforms.sssTint={value:tint};
+    sh.uniforms.gradBot={value:bot.clone()};
+    sh.uniforms.gradMid={value:mid.clone().multiplyScalar(1.25)};
+    sh.uniforms.gradTop={value:top.clone().multiplyScalar(1.55)};
+    sh.uniforms.gradMidPos={value:sch.mid||.5};
+    sh.uniforms.uHH={value:sc*GEO_R[gi<0?0:gi]*.85};
+    sh.vertexShader=sh.vertexShader
+      .replace('#include <common>','#include <common>\nvarying float vWY;\nvarying float vCWY;')
+      .replace('#include <begin_vertex>','#include <begin_vertex>\nvec4 lwp=modelMatrix*vec4(transformed,1.0);vWY=lwp.y;vCWY=modelMatrix[3][1];');
+    sh.fragmentShader=sh.fragmentShader
+      .replace('#include <common>','#include <common>\nuniform vec3 sssTint;\nuniform vec3 gradBot;\nuniform vec3 gradMid;\nuniform vec3 gradTop;\nuniform float gradMidPos;\nuniform float uHH;\nvarying float vWY;\nvarying float vCWY;')
+      .replace('#include <dithering_fragment>',[
+'float gt=clamp((vWY-vCWY)/(2.0*uHH)+0.5,0.0,1.0);',   // 标尺=糖自身世界中心±半高:摇/举/落/弹/飞全自动跟随
+'vec3 gc=(gt<gradMidPos)?mix(gradBot,gradMid,gt/gradMidPos):mix(gradMid,gradTop,(gt-gradMidPos)/(1.0-gradMidPos));',
+'gl_FragColor.rgb*=gc;',
+'float cRim=pow(1.0-abs(dot(normalize(normal),normalize(vViewPosition))),1.15)*0.62;',
+'gl_FragColor.rgb+=sssTint*cRim;',
+'#include <dithering_fragment>'].join('\n'));
+  };
+  const mesh=new T.Mesh(geo,m); mesh.castShadow=true; g.add(mesh);
+  g.scale.set(sc,sc*(geo===CANDY_GEOS[0]?.8:1),sc);
+  g.userData.r=sc*GEO_R[CANDY_GEOS.indexOf(geo)]*.82;
+  return g;
+}
+// 小半罐混装样罐:数量固定 38 颗(接真图鉴时改回真实库存);换一罐=换种子重摇
+let jarSeed=_h||20260828;
+// 「我的罐子」状态要在首次 fillJar 之前就位(声明放商店块里会踩 TDZ——2026-09-01 实锤)
+let viewMine=false;
+let picking=false, PICK=null;   // 选罐中：PICK=后端给的五罐候选（{day,suggest,jars}）；选罐时罐里装的是候选罐的真糖
+let onceUsed=[];   // 今天已经买过、当天不再卖的限购糖（后端 once_used；勇气结晶豆一天一颗）
+let pocket=[];   // 储藏罐里的糖 [{id, from}]
+try{ pocket=JSON.parse(localStorage.getItem('candyjar_pocket_v1')||'[]'); }catch(e){}
+function isTodayJar(){ return !SERVER||!SERVER.jar||SERVER.jar.jar===curJar; }
+// 能不能吃：储藏罐能，今日罐能，**预览别的罐不能**（那些糖不在账本里）。
+function canEat(){ return !picking&&(viewMine||isTodayJar()); }   // 选罐时只能看：还没开罐，账本上没有这些糖
+function fillJar(){
+  while(itemsGroup.children.length) itemsGroup.remove(itemsGroup.children[0]);
+  shakables.length=0;
+  // 「我的储藏罐」= 买来的糖按原样摆;「今日罐」= **后端真实库存**(2026-09-01 接上:
+  // 之前样罐 38 颗假混装和库存解耦,后端吃空了前端还能无限吃,倒计时全挂不上——mamo 报的 bug)
+  const mineCats=viewMine?pocket.map(x=>CATALOG&&CATALOG.candies.find(c=>c.id===x.id)).filter(Boolean):null;
+  // 双击切到别的罐＝**预览**：那一罐的库存不属于今天，按 curJar 本地生成给 mamo 看效果。
+  // 真实库存只在「今日罐」生效，预览罐只能看不能吃（mamo 2026-09-04：要能切罐看效果，但玩家不能借此变糖）。
+  const realCats=(!viewMine&&isTodayJar()&&SERVER&&SERVER.jar&&CATALOG)
+    ?SERVER.jar.candies.map(x=>CATALOG.candies.find(c=>c.id===x.id)).filter(Boolean):null;
+  // 选罐时装的是候选罐当天真会摇出来的糖（同一天同一罐确定），选定后就是这一罐、不重摇
+  const pickCats=(picking&&PICK&&CATALOG&&PICK.jars[String(curJar)])
+    ?PICK.jars[String(curJar)].candies.map(x=>CATALOG.candies.find(c=>c.id===x.id)).filter(Boolean):null;
+  const forced=viewMine?mineCats:(pickCats||realCats);
+  const N=forced?forced.length:((curJar===5)?44:30), R=rnd(jarSeed), placed=[];
+  for(let i=0;i<N;i++){
+    const c=candy(i,R,forced?forced[i]:null), r=c.userData.r;
+    const layer=Math.floor(i/8), aa=i*2.4+R()*.5;
+    const rr=(i%9===0?.3:.9+Math.sqrt(R())*1.7);
+    c.position.set(Math.cos(aa)*rr, WALL+.8+layer*1.3+R()*.2, Math.sin(aa)*rr);
+    c.rotation.set((R()-.5)*1.1, R()*Math.PI*2, (R()-.5)*1.1);
+    itemsGroup.add(c); placed.push({g:c,r});
+  }
+  for(let it=0;it<52;it++){
+    for(let a2=0;a2<placed.length;a2++){
+      const A=placed[a2];
+      for(let b2=a2+1;b2<placed.length;b2++){
+        const B=placed[b2], d=A.g.position.clone().sub(B.g.position), minD=(A.r+B.r)*1.02;   // 略留缝:软糖和mm豆表面相交会闪花
+        const len=d.length()||.01;
+        if(len<minD){ d.multiplyScalar((minD-len)/len*.5); A.g.position.add(d); B.g.position.sub(d); }
+      }
+      const P=A.g.position, hor=Math.hypot(P.x,P.z), maxHor=3.4-A.r*.9;
+      if(hor>maxHor){ P.x*=maxHor/hor; P.z*=maxHor/hor; }
+      P.y=Math.max(WALL+.1+A.r*.85, P.y-.22);   // 包围半径抬底,不插玻璃底
+    }
+  }
+  for(const p2 of placed) shakables.push({node:p2.g,baseY:p2.g.position.y,phase:R()*6.28});
+  // 无豆罐:豆子改撒在罐外地上(mamo 的远景实体糖实验)
+  while(outsideGroup.children.length) outsideGroup.remove(outsideGroup.children[0]);
+  if(mmEvery===0){
+    const spots=[[4.9,2.3],[-4.6,1.6],[5.7,-0.6],[-4.0,3.2],[6.2,1.4]];
+    for(let k=0;k<spots.length;k++){
+      const m=new T.MeshPhysicalMaterial({color:new T.Color(MM_BASE[k%MM_BASE.length]),
+        roughness:.13,clearcoat:1,clearcoatRoughness:.05,envMapIntensity:.9});
+      const mm=new T.Mesh(MM_GEO,m); const sc=.8+R()*.15;
+      mm.scale.setScalar(sc); mm.castShadow=true;
+      mm.position.set(spots[k][0], sc*.56, spots[k][1]);
+      mm.rotation.set((R()-.5)*.5, R()*Math.PI*2, (R()-.5)*.5);
+      outsideGroup.add(mm);
+    }
+  }
+}
+
+// ── 相机:按屏幕比例取景(0 尺寸跳过——隐藏标签页 NaN 会进相机且永不恢复) ──
+const camera=new T.PerspectiveCamera(36,1,3,1200);   // near .1→3:顶视+拉远时罐口/盖沿 z-fighting 闪烁(mamo 图3/5),near 抬高深度精度提~30 倍;far 装下背景球
+const controls=new OrbitControls(camera,canvas);
+controls.target.set(0,10.1,0);   // 看更高=罐子在画面里更靠下，按 mamo 右侧 Figma 稍向下落
+controls.enableDamping=true; controls.dampingFactor=.06;
+controls.enablePan=false;                 // 禁挪罐(mamo:双指平移会看到瓶底)
+controls.maxPolarAngle=Math.PI*.49;       // 仰视不过地平线
+controls.autoRotate=true; controls.autoRotateSpeed=.4;
+function fitDistance(){
+  const halfV=Math.tan(camera.fov/2*Math.PI/180);
+  return Math.max(8.2/halfV, 5.6/(halfV*camera.aspect))*2.05;   // 再远一点(mamo)   // 开局机位(mamo 连催两轮,前两刀都没砍中——这次 grep 验过)
+}
+let booted=false;
+function resize(){
+  // 尺寸取画布自己的，不取窗口：电脑上 body 被收成 430px 的柱子后，窗口宽 ≠ 画布宽，
+  // 拿 innerWidth 会把绘图缓冲和 camera.aspect 都撑成整屏，罐子被横向拉扁。
+  const w=canvas.clientWidth||innerWidth,h=canvas.clientHeight||innerHeight;
+  if(!w||!h) return;
+  renderer.setSize(w,h,false); camera.aspect=w/h; camera.updateProjectionMatrix();
+  const need=fitDistance();
+  controls.minDistance=need*.8; controls.maxDistance=need*1.55;   // mamo 图4/图5 定的远近区间
+  if(!booted||isNaN(camera.position.x)){ booted=true;
+    camera.position.copy(controls.target).add(new T.Vector3(.5,.52,1).normalize().multiplyScalar(need));
+    return;
+  }
+  const dir=camera.position.clone().sub(controls.target).normalize();
+  let d=camera.position.distanceTo(controls.target);
+  if(d<controls.minDistance||d>controls.maxDistance) d=need;
+  camera.position.copy(controls.target).add(dir.multiplyScalar(d));
+}
+['gesturestart','gesturechange','gestureend'].forEach(ev=>{
+  document.addEventListener(ev,e=>e.preventDefault(),{passive:false});   // iOS 捏合=缩放整页,拦掉留给 3D
+});
+addEventListener('resize',resize);
+document.addEventListener('visibilitychange',resize);
+resize(); requestAnimationFrame(resize);
+
+let lastTouch=0;
+const perfNow=()=>performance.now()/1000;
+['pointerdown','touchstart'].forEach(ev=>{
+  canvas.addEventListener(ev,()=>{ controls.autoRotate=false; lastTouch=perfNow(); },{passive:true});
+});
+
+// 点罐子摇一摇:OrbitControls 吞 click,自己判"按下-抬起没挪窝"
+const ray=new T.Raycaster(), ptr=new T.Vector2(); let shakeT=-1;
+let tapX=0,tapY=0,tapT=0;
+canvas.addEventListener('pointerdown',e=>{ tapX=e.clientX;tapY=e.clientY;tapT=performance.now(); },{passive:true});
+let picked=null, pickFx=null, eatFx=null, handFx=null;
+let camFx=null, lidFx=null, lidOpened=false;
+const returnFx=[], sparks=[];
+function isBusy(n){   // 这颗糖正被某个动画接管吗
+  if(pickFx&&pickFx.node===n) return true;
+  if(eatFx&&eatFx.node===n) return true;
+  if(handFx&&handFx.node===n) return true;
+  return returnFx.some(r=>r.node===n);
+}
+const glowTex=(()=>{ const c=document.createElement('canvas'); c.width=c.height=64;
+  const x=c.getContext('2d'); const g=x.createRadialGradient(32,32,2,32,32,30);
+  g.addColorStop(0,'rgba(255,255,255,.95)'); g.addColorStop(.4,'rgba(255,230,180,.4)');
+  g.addColorStop(1,'rgba(255,230,180,0)'); x.fillStyle=g; x.fillRect(0,0,64,64);
+  return new T.CanvasTexture(c); })();
+function goDefaultView(){   // 无论玩家转到哪,点糖都拉回标准展示机位(mamo)
+  const halfV=Math.tan(camera.fov/2*Math.PI/180);
+  const need=Math.max(8.2/halfV, 5.6/(halfV*camera.aspect))*1.62;
+  const p1=new T.Vector3(0,10.1,0).add(new T.Vector3(.5,.52,1).normalize().multiplyScalar(need));
+  camFx={p0:camera.position.clone(),p1,t0:controls.target.clone(),t1:new T.Vector3(0,10.1,0),t:0};
+}
+function openLid(){   // 盖子拿下来放旁边地上;本次会话不放回(mamo)
+  if(lidOpened) return; lidOpened=true;
+  scene.attach(lid);
+  lidFx={p0:lid.position.clone(),p1:new T.Vector3(-8.4,.6,-8.2),
+    r0:lid.rotation.z,r1:.09,t:0};   // 罐后左侧地上,平放不穿地
+}
+function sendHome(node,thenShake){
+  if(!node||!node.userData.homePos) return;
+  returnFx.push({node,from:node.position.clone(),to:node.userData.homePos.clone(),
+    rot:node.userData.homeRot,t:0});
+  // 固定小延迟就晃(不等糖落地):糖还在半路罐子先动=被塞回去带起来的手感(mamo 2026-09-02)
+  if(thenShake) setTimeout(()=>{ if(shakeT<0) shakeT=0; },180);
+}
+function setPickCardMode(){
+  const card=document.getElementById('card');
+  card.classList.remove('reveal','feed','override','closing','reveal-motion');
+  card.querySelector('.eyebrow').textContent="POUR TOI · TODAY'S PICK";
+  card.classList.remove('mine-detail');
+}
+function showCard(c){
+  if(picked&&picked!==c){ sendHome(picked); if(shakeT<0) shakeT=.35; }   // 连点第二颗:上一颗落回+罐子晃一下
+                                                                          // (.85 起播衰减到只剩 6% 幅度,mamo 说几乎看不见;.35≈32% 幅度)
+  picked=c;
+  setPickCardMode();
+  const card=document.getElementById('card');
+  if(!c.userData.homePos){ c.userData.homePos=c.position.clone();
+    c.userData.homeRot=c.rotation.clone();
+ }
+  const d=c.userData, cat=d.cat;
+  if(viewMine&&cat){   // 储藏罐:买来的糖,给确切名称+三段彩标(来历/口味/因果)——mamo 2026-09-01
+    document.getElementById('cardTitle').textContent='「'+fullName(cat)+'」';
+    const desc=document.getElementById('cardDesc'); desc.textContent='';
+    const sec=(kind,label,text)=>{
+      const d=document.createElement('div'); d.className='reveal-sec '+kind;
+      const b=document.createElement('b'); b.className='reveal-label'; b.textContent=label;
+      const p2=document.createElement('p'); p2.textContent=text;
+      d.append(b,p2); desc.append(d);
+    };
+    if(cat.lore) sec('lore','来历',cat.lore);
+    sec('taste','口味',cat.taste||'？');
+    sec('cause','因果',endDot(cat.reveal||'？'));   // 只给判词一句;怎么演等吃下去或看倒计时详情(mamo)
+    card.classList.add('mine-detail');   // 借用揭晓卡的分段排版
+    card.querySelector('.eyebrow').textContent='MA RÉSERVE';
+  }else{
+    card.classList.remove('mine-detail');
+    document.getElementById('cardTitle').textContent=
+      cat?(d.kind==='mm'?'一颗巧克力豆?':(cat.scheme+'色的'+cat.shape+kindWord(cat))):'一颗糖';
+    document.getElementById('cardDesc').textContent=cat?cat.shop:'表面人畜无害。';
+  }
+  // 预览别的罐:只给看——藏掉吃/喂,但**必须留着「放回去」**：
+  // 只有它会把糖送回罐里，用 okBtn 关卡片糖会卡在半空下不来（mamo 2026-09-04 报）。
+  const preview=!canEat();
+  ['eatMe','eatHim'].forEach(id=>document.getElementById(id).style.display=preview?'none':'');
+  document.getElementById('putBack').style.display='';
+  document.getElementById('eatMe').textContent='自己吃';
+  document.getElementById('putBack').textContent=preview?'放回去（预览）':'放回去';
+  pendingEatConfirm=false;
+  document.getElementById('okBtn').style.display='none';
+  document.getElementById('cardBtns').style.display='flex';
+  document.getElementById('feedMsg').style.display='none';   // 平时不显示,点喂Ta吃才出(mamo)
+  document.getElementById('feedMsg').value='';
+  feedStage(false);
+  document.getElementById('card').classList.add('show');
+  document.body.classList.add('showcase');   // 标题两行让位,专心看糖(mamo)
+  openLid(); goDefaultView();
+  // 举到罐口上方(盖子已开走,糖悬在瓶口露天处)
+  c.userData.showPos=new T.Vector3(c.position.x*.15, 15.4, .5);   // 抬一个身位(mamo:有点矮)
+  pickFx={node:c, from:c.position.clone(), to:c.userData.showPos, t:0};
+}
+function hideCard(){
+  document.body.classList.remove('showcase');
+  document.getElementById('card').classList.remove('show');
+  if(picked) sendHome(picked,true);   // true=落定那一帧再摇罐(不摇在半路,也不会掉帧就漏摇)
+  picked=null; pickFx=null;
+}
+canvas.addEventListener('pointerup',e=>{
+  if(performance.now()-tapT>400) return;
+  if(Math.hypot(e.clientX-tapX,e.clientY-tapY)>12) return;
+  if(eatFx||handFx) return;
+  const cr=canvas.getBoundingClientRect();   // 同上：点击也按画布自己的矩形换算，否则柱子里点糖会偏
+  ptr.x=((e.clientX-cr.left)/cr.width)*2-1; ptr.y=-((e.clientY-cr.top)/cr.height)*2+1;
+  ray.setFromCamera(ptr,camera);
+  const hitCandy=ray.intersectObject(itemsGroup,true)[0];
+  if(hitCandy){ let n=hitCandy.object; while(n.parent&&n.parent!==itemsGroup) n=n.parent;
+    showCard(n); return; }
+  hideCard();
+  if(ray.intersectObject(jar,true).length) shakeT=0;
+},{passive:true});
+
+// 勇气 + 图鉴计数(本机持久化)
+let courage=12, dexCount={};   // 起始 12(mamo 2026-09-04);后端为准,这只是拿到账本前的占位
+try{ dexCount=JSON.parse(localStorage.getItem('candyjar_dex_v1')||'{}'); }catch(e){}
+function saveDex(){ try{ localStorage.setItem('candyjar_dex_v1',JSON.stringify(dexCount)); }catch(e){} }
+function updCourage(){ document.getElementById('courageN').textContent=courage; }
+function takeOut(c){   // 从罐里注销这颗糖
+  itemsGroup.remove(c);
+  const idx=shakables.findIndex(x=>x.node===c); if(idx>=0) shakables.splice(idx,1);
+}
+let pendingEatConfirm=false;
+function eatCandy(){   // 自己吃;药效未过先确认顶掉(mamo:要在吃之前提醒)
+  if(!picked||eatFx) return;
+  // 机制糖(巧克力豆)一律没时长,吃它顶不掉任何东西——后端 _apply 对 jar==0 一律回 mins=0(护身符也是),
+  // 所以别弹顶旧确认(mamo 2026-09-05 报:吃勇气结晶被问"要顶掉古法酱香吗",而且实际也没顶掉)。
+  const hardOverride=fxMe&&picked.userData.kind!=='mm'&&(fxMe.until-Date.now())>10*60000;   // 旧药效还剩 10 分钟以上才算硬顶(与后端 OVERRIDE_GRACE_MIN 同线)
+  if(hardOverride&&!pendingEatConfirm){
+    pendingEatConfirm=true;
+    const title=document.getElementById('cardTitle'); title.textContent='';
+    title.append(document.createTextNode('要'));
+    const verb=document.createElement('span'); verb.className='override-verb'; verb.textContent='顶掉';
+    title.append(verb,document.createTextNode('「'+fullName(fxMe.cat)+'」吗？'));
+    document.getElementById('cardDesc').textContent=
+      '你身上的药效还剩不少。现在硬顶掉它:花费 2 勇气,而且这一颗不产勇气。(只剩十分钟以内时顶掉不收费)';
+    document.getElementById('feedMsg').style.display='none';
+    document.getElementById('eatMe').textContent='还是要吃';
+    document.getElementById('eatHim').style.display='none';
+    document.getElementById('putBack').textContent='算了';
+    document.getElementById('card').classList.add('override');
+    return;
+  }
+  pendingEatConfirm=false;
+  const c=picked; picked=null; pickFx=null;
+  if(c.userData.showPos) c.position.copy(c.userData.showPos);
+  document.getElementById('card').classList.remove('show');
+  eatFx={node:c, base:c.scale.clone(), t0:performance.now(), popped:false};
+}
+function handCandy(){   // 喂Ta吃:附言+糖一起发过去(同买酒先例);P1 概率模板见 note-20
+  if(!picked||handFx) return;
+  const c=picked; picked=null; pickFx=null;
+  const msg=document.getElementById('feedMsg').value.trim();
+  document.getElementById('card').classList.remove('show');
+  const cat=c.userData.cat;
+  handFx={node:c, from:c.position.clone(), t0:performance.now(), cat, msg};
+}
+function popSparks(worldPos){
+  for(let i=0;i<7;i++){
+    const sp=new T.Sprite(new T.SpriteMaterial({map:glowTex,transparent:true,
+      depthWrite:false,blending:T.AdditiveBlending,opacity:.9}));
+    sp.position.copy(worldPos);
+    const a=Math.random()*Math.PI*2, v=1.6+Math.random()*2.2;
+    sp.userData.v=new T.Vector3(Math.cos(a)*v,(Math.random()-.2)*2.4,Math.sin(a)*v);
+    sp.scale.setScalar(.7+Math.random()*.5); sp.userData.life=0;
+    scene.add(sp); sparks.push(sp);
+  }
+}
+function durText(cat,mins){
+  if(!cat||!cat.dur||!cat.dur[1]) return '一次性,立刻生效';
+  // 吃下那一刻时长就摇定了(后端在区间内 randint 并落成确切到期时刻)——
+  // 这里报**这一颗的实际时长**,区间只属于图鉴(mamo 2026-08-31)
+  if(mins) return mins+' 分钟';
+  return cat.dur[0]===cat.dur[1]?(cat.dur[0]+' 分钟'):(cat.dur[0]+'~'+cat.dur[1]+' 分钟');
+}
+function endDot(t){ return /[。！？!?”』…]$/.test((t||'').trim())?t:(t+'。'); }
+function fullName(cat){ return cat?(cat.name||'一颗糖'):'一颗糖'; }   // 名字=单一字段,花名已废除(mamo 2026-09-04)
+function kindWord(cat){ return cat&&cat.jar===0?'糖':'软糖'; }
+let pendingBump=false;   // 勇气动画挂起:等揭晓卡收起再播
+function bumpCourage(){
+  updCourage();
+  const n=document.getElementById('courageN');
+  n.classList.remove('bump'); void n.offsetHeight; n.classList.add('bump');
+  const tag=document.getElementById('paper');
+  if(tag){ tag.classList.remove('hit'); void tag.offsetHeight; tag.classList.add('hit'); }
+  const r=n.getBoundingClientRect(), p=document.getElementById('plusone');
+  p.style.left=(r.right+4)+'px'; p.style.top=(r.top-4)+'px';
+  p.classList.remove('fly'); void p.offsetHeight; p.classList.add('fly');
+}
+let fxMe=null, fxTa=null;   // 双方可同时中招(mamo):两枚牌
+let lastRolledMins=0;
+function startEffect(cat,who){
+  if(!cat||!cat.dur||!cat.dur[1]) return 0;
+  // 吃下这一刻时长就摇定了(后端也是同样在区间内取一个确切值并落成到期时刻);
+  // 揭晓卡报的是这一颗的实际时长,区间只属于图鉴(mamo 2026-08-31)
+  const mins=Math.round(cat.dur[0]+Math.random()*(cat.dur[1]-cat.dur[0]));
+  lastRolledMins=mins;
+  const fx={cat, until:Date.now()+mins*60000};
+  if(who==='me') fxMe=fx; else fxTa=fx;
+  return mins;
+}
+// 数字锁位：每个数字进 .6em 定宽格，1↔0 不再撑动周围（Playfair 无 tnum，只能这样做）
+function tnumHTML(str){
+  let out='';
+  for(const c of str) out+='<i class="'+(c>='0'&&c<='9'?'d':'s')+'">'+c+'</i>';
+  return out;
+}
+function fxFmt(ms){   // 冒号制,超一小时补出时位(与聊天页同一套;′″ 在小时那档没法自然延伸)
+  const t=Math.max(0,Math.round(ms/1000));
+  const h=Math.floor(t/3600), m=Math.floor(t%3600/60), sec=t%60;
+  const p=n=>String(n).padStart(2,'0');
+  return h?(h+':'+p(m)+':'+p(sec)):(m+':'+p(sec));
+}
+function fxTick(){
+  for(const [fx,id,label] of [[fxMe,'fxchipMe','你'],[fxTa,'fxchipTa','Ta']]){
+    const el=document.getElementById(id);
+    if(!el) continue;   // 元素不在就跳过:这里每秒跑一次,一旦抛错会把后面的初始化全带塌
+    if(!fx){ el.style.display='none'; continue; }
+    const left=fx.until-Date.now();
+    if(left<=0){ if(id==='fxchipMe') fxMe=null; else fxTa=null; el.style.display='none'; continue; }
+    el.style.display='';
+    const txt=fxFmt(left);
+    if(el.dataset.t!==txt){   // 只换文本：不再播上下跳的动画（mamo：数字位置要一直固定）
+      el.dataset.t=txt;
+      if(!el.dataset.built){
+        el.dataset.built='1';
+        el.innerHTML='<span class="who"></span><span class="num"></span>';
+      }
+      el.querySelector('.who').textContent=label;
+      el.classList.toggle('ta',label==='Ta');
+      const nEl=el.querySelector('.num');
+      const isLong=txt.split(':').length>2;   // h:mm:ss 才用长格
+      nEl.className='num tnum'+(isLong?' long':'');
+      el.classList.toggle('wide',isLong);
+      nEl.innerHTML=tnumHTML(txt);
+    }
+  }
+}
+let fxdtCur=null;   // 详情卡正在看的那份药效（开着时每秒刷新剩余时间）
+function openFxDetail(fx,who){
+  fxdtCur=fx;
+  const cat=fx.cat;
+  document.getElementById('fxdtCard').classList.remove('settled');
+  document.getElementById('fxdtName').textContent='「'+fullName(cat)+'」';
+  document.getElementById('fxdtTags').className='tags'+(who==='Ta'?' ta':'');
+  document.getElementById('fxdtTags').querySelector('.who').textContent=(who==='Ta'?'Ta 的':'你 的');   // Ta 字距 0,靠这个空格分开
+  const fb=document.getElementById('fxdtBody'); fb.textContent='';
+  if(cat.reveal){ const l=document.createElement('p'); l.className='lead'; l.textContent=endDot(cat.reveal); fb.append(l); }
+  if(cat.perform){ const b=document.createElement('p'); b.textContent=cat.perform; fb.append(b); }
+  if(!cat.reveal&&!cat.perform) fb.textContent='';
+  fxdtSync();
+  document.getElementById('fxdt').classList.add('show');
+}
+function fxdtSync(){
+  if(!fxdtCur) return;
+  const box=document.getElementById('fxdt');
+  if(!box.classList.contains('show')) return;
+  const left=fxdtCur.until-Date.now();
+  if(left<=0){ box.classList.remove('show'); fxdtCur=null; return; }
+  const te=document.getElementById('fxdtTime'); te.className='tnum'; te.innerHTML=tnumHTML(fxFmt(left));
+}
+document.getElementById('fxdtOk').onclick=()=>{
+  document.getElementById('fxdt').classList.remove('show'); fxdtCur=null;
+};
+document.getElementById('fxdt').onclick=e=>{
+  if(e.target.id==='fxdt'){ e.target.classList.remove('show'); fxdtCur=null; }
+};
+document.getElementById('fxdtCard').addEventListener('animationend',e=>{
+  if(e.animationName==='ddCardRise') e.currentTarget.classList.add('settled');
+});
+setInterval(()=>{ fxTick(); fxdtSync(); },1000);
+document.addEventListener('click',e=>{
+  let fx=null, who='';
+  // 用 closest 向上找:点在数字/文字上时 e.target 是内层 span,直接比 id 会漏(mamo 报点时间打不开)
+  const chip=e.target&&e.target.closest?e.target.closest('#fxchipMe,#fxchipTa'):null;
+  if(chip&&chip.id==='fxchipMe'&&fxMe){ fx=fxMe; who='你'; }
+  if(chip&&chip.id==='fxchipTa'&&fxTa){ fx=fxTa; who='Ta'; }
+  if(fx){   // 点牌=药效详情卡（Figma 1051:7803，与揭晓卡两套设计）
+    openFxDetail(fx,who);
+  }
+});
+// 本地是先演后报的（动画不等网络往返）。后端一旦拒绝，这里把刚才演的那份撤干净：
+// 药效牌、图鉴 +1、勇气都退回去，再按后端的真状态校准。
+// 2026-09-04 mamo 报：罐子空了照样弹揭晓卡，再点倒计时是本地那颗假药效。
+function rollbackLocalEat(cat, feed, why){
+  if(feed) fxTa=null; else fxMe=null;
+  if(cat&&dexCount[cat.id]){ dexCount[cat.id]--; if(!dexCount[cat.id]) delete dexCount[cat.id]; saveDex(); }
+  pendingBump=false;
+  fetch('/candyjar').then(r=>r.ok?r.json():null).then(sv=>{
+    if(!sv) return;
+    SERVER=sv;
+    if(sv.active) applyServerEffects(sv.active);
+    if(sv.courage&&sv.courage.user!=null){ courage=sv.courage.user; updCourage(); }
+    if(sv.dex) dexCount=sv.dex;
+    if(!viewMine) fillJar();
+  }).catch(()=>{});
+  if(why) jarBubble(why);
+}
+function serverEat(cat, feed, msg){
+  // 落后端账本:他从状态里读到我吃了什么(mamo 点名的"赖不掉");失败也不挡本地演出
+  if(!cat||!SERVER) return;
+  const it=(SERVER.jar&&SERVER.jar.candies||[]).find(x=>x.id===cat.id);
+  const fromReserve=viewMine;   // 储藏罐视图里吃的=消耗 reserve(后端不再 +1 勇气)
+  // 今日罐里找不到这颗＝它不在账本上（预览罐的糖、或 SERVER 过期）。
+  // 这里绝不能发 index:null——后端会把它当成「随手抓一颗」，从真罐里随机吃掉另一颗糖。
+  // mamo 2026-09-04 在预览罐里吃到的"药效不是我吃的那个"就是这么来的。
+  if(!fromReserve&&!it){ jarBubble('这颗不在今天的账本里，没有真吃下去'); fxMe=null; return; }
+  fetch('/candyjar/eat',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify(fromReserve
+      ?{source:'reserve', candy_id:cat.id, feed:!!feed, message:msg||null}
+      :{index:it?it.i:null, feed:!!feed, message:msg||null})})
+    .then(r=>r.ok?r.json():null).then(res=>{
+      if(!res||res.error){ rollbackLocalEat(cat,feed,'这一口没记上账（'+((res&&res.error)||'网络没通')+'）'); return; }
+      if(res.text&&res.text.startsWith('储藏罐里没有这颗糖')){
+        // 本地 pocket 里的幽灵条目(账本上没有):按回执对齐并明说,别让她以为吃成了
+        if(Array.isArray(res.reserve)){ pocket=res.reserve.map(id=>({id})); savePocket(); }
+        rollbackLocalEat(cat,feed,'这颗是早期演示留下的影子糖，账本上并没有——已替你清掉');
+        if(viewMine) fillJar();
+        return;
+      }
+      if(res.text&&(res.text.startsWith('罐子空了')||res.text.startsWith('没有编号'))){
+        // 后端没糖可记：本地那份演出必须撤掉，不然倒计时挂的是一颗不存在的糖
+        if(SERVER&&SERVER.jar) SERVER.jar.candies=[];
+        rollbackLocalEat(cat,feed,'今日罐其实已经见底啦——刚才那口没算数');
+        return;
+      }
+      if(res.courage&&res.courage.user!=null){ courage=res.courage.user; updCourage(); }
+      if(res.dex) dexCount=res.dex;
+      if(Array.isArray(res.reserve)){ pocket=res.reserve.map(id=>({id})); savePocket(); }
+      if(res.active) applyServerEffects(res.active);   // 后端才是权威:用它的真实剩余时间校准牌子
+      if(it) SERVER.jar.candies=SERVER.jar.candies.filter(x=>x!==it);
+      try{ if(window.parent!==window) parent.postMessage({type:'candyjar:ate'},location.origin); }catch(e){}
+    }).catch(()=>{});
+}
+function consumePocket(cat){ /* 储藏罐消耗改由后端回执同步(res.reserve),本地不再自记 */ }
+/* Figma AI 动画的 14 片彩纸：位置/尺寸/颜色来自 1155:824–837；
+   motion 轨道把绝对旋转减去静态旋转，避免内外两层重复转一次。 */
+const REVEAL_CONFETTI=[
+  [100,29.12,9.364,7.912,8,5,-25,'#d98c59',300,60,20,15,-120,'1155:824'],
+  [204.45,22,7.348,7.348,6,6,15,'#bf9e73',330,-45,30,20,145,'1155:825'],
+  [130.5,63.05,7.778,7.778,7,4,-45,'#99856b',360,30,-15,25,-170,'1155:826'],
+  [227.5,56,8.33,9.428,5,8,30,'#e0c78c',390,-70,-5,15,195,'1155:827'],
+  [81,42.8,6.464,7.196,6,4,-60,'#b87359',420,80,5,20,-220,'1155:828'],
+  [177.17,18,8.485,8.485,8,4,45,'#8c9e8c',300,-20,35,25,245,'1155:829'],
+  [116.5,80.21,6.641,8.056,5,7,-15,'#ebd1ad',330,45,-30,15,-270,'1155:830'],
+  [212.04,78,6.964,8.062,7,4,60,'#c7947a',360,-55,-25,20,295,'1155:831'],
+  [147,10,6.464,7.196,4,6,-30,'#d98c59',390,15,40,25,-140,'1155:832'],
+  [244.63,38,7.006,5.811,6,4,20,'#99856b',420,-85,15,15,165,'1155:833'],
+  [91.5,68.67,7.044,7.044,5,5,-50,'#b87359',300,70,-20,20,-190,'1155:834'],
+  [193.57,88.5,7.291,6.798,7,3,40,'#ebd1ad',330,-35,-35,25,215,'1155:835'],
+  [72,23.24,7.006,5.811,4,6,-70,'#bf9e73',360,90,25,15,-240,'1155:836'],
+  [253.54,68.5,5.899,6.636,6,3,55,'#e0c78c',390,-95,-15,20,265,'1155:837']
+];
+function ensureRevealConfetti(){
+  const box=document.querySelector('#card .reveal-confetti');
+  if(!box||box.childElementCount) return;
+  REVEAL_CONFETTI.forEach(c=>{
+    const [x,y,bw,bh,w,h,base,color,delay,sx,sy,ey,turn,nodeId]=c;
+    const bit=document.createElement('span'); bit.className='cj-confetti'; bit.dataset.figmaNode=nodeId;
+    bit.style.cssText=`left:${x}px;top:${y}px;width:${bw}px;height:${bh}px;`;
+    bit.style.setProperty('--delay',delay+'ms'); bit.style.setProperty('--sx',sx+'px');
+    bit.style.setProperty('--sy',sy+'px'); bit.style.setProperty('--ey',ey+'px');
+    bit.style.setProperty('--turn',turn+'deg');
+    const face=document.createElement('i');
+    face.style.cssText=`width:${w}px;height:${h}px;background:${color};transform:rotate(${base}deg)`;
+    bit.append(face); box.append(bit);
+  });
+}
+function startRevealMotion(card){
+  ensureRevealConfetti();
+  card.classList.remove('closing','reveal-motion');
+  void card.offsetWidth;   // 同一页再次吃糖也从第 0 帧重新揭晓
+  card.classList.add('reveal-motion');
+}
+function revealEat(d){
+  const cat=d.cat;
+  consumePocket(cat);
+  serverEat(cat,false,null);
+  const override=!!(fxMe&&(!cat||cat.jar!==0)&&(fxMe.until-Date.now())>10*60000);   // 同后端十分钟线;机制糖不算顶旧
+  if(override){ courage=Math.max(0,courage-2); updCourage(); }
+  else { courage++; pendingBump=true; }   // 先记账不播动画,等揭晓卡关掉再播(被卡片挡住就白演了)
+  if(cat){ dexCount[cat.id]=(dexCount[cat.id]||0)+1; saveDex(); startEffect(cat,'me'); }
+  // 揭晓格式二稿(mamo 2026-08-31):唯一名=效果+花名+软糖/糖豆;触发因果=总结+怎么演一段;时长垫底
+  const card=document.getElementById('card');
+  card.classList.add('reveal');
+  card.querySelector('.eyebrow').textContent='hooray !';
+  const title=document.getElementById('cardTitle');
+  title.textContent='';
+  const lead=document.createElement('small'); lead.textContent='你吃下了';
+  const wave=document.createElement('i');
+  const name=document.createElement('span'); name.textContent=cat?('「'+fullName(cat)+'」'):'一颗糖';
+  const french=document.createElement('em'); french.textContent='Pour les cœurs courageux.';
+  title.append(lead,wave,name,french);
+  const desc=document.getElementById('cardDesc'); desc.textContent='';
+  // lead＝判词(一句话结论)，text＝演法(详情)。两段分开渲染：判词加粗、下面留空。
+  // 连着排通读会串行——mamo 2026-09-04：「一个是一句话总结，后面才是详情」。
+  function addRevealSection(kind,label,text,lead){
+    const sec=document.createElement('div'); sec.className='reveal-sec '+kind;
+    const tag=document.createElement('b'); tag.className='reveal-label'; tag.textContent=label;
+    sec.append(tag);
+    if(lead){ const p0=document.createElement('p'); p0.className='lead'; p0.textContent=lead; sec.append(p0); }
+    if(text){ const copy=document.createElement('p'); copy.textContent=text; sec.append(copy); }
+    desc.append(sec);
+  }
+  if(cat){
+    addRevealSection('taste','口味','它尝起来…'+cat.taste);   // 口味自带「是/像/太…」开头与句尾标点（mamo 2026-09-03）
+    addRevealSection('cause','触发了因果',cat.perform,endDot(cat.reveal));
+    addRevealSection('time','时间','持续时间 '+durText(cat,lastRolledMins));
+  }else addRevealSection('cause','触发了因果','……效果发动!');
+  document.getElementById('feedMsg').style.display='none';
+  ['eatMe','eatHim','putBack'].forEach(id=>document.getElementById(id).style.display='none');
+  const okBtn=document.getElementById('okBtn');
+  okBtn.style.display=''; okBtn.disabled=false;
+  okBtn.classList.remove('press-motion');
+  delete okBtn.dataset.pressActionPending; delete okBtn.dataset.closePending;
+  document.getElementById('cardBtns').style.display='flex';
+  card.classList.add('show');
+  startRevealMotion(card);
+}
+function revealHand(cat, msg){
+  consumePocket(cat);
+  serverEat(cat,true,msg);
+  if(cat) startEffect(cat,'ta');   // 样机演示:喂出去就当 Ta 中招挂牌(正式版由后端回执)
+  setPickCardMode();
+  document.getElementById('cardTitle').textContent=
+    '把'+(cat?(cat.scheme+'色的'+cat.shape+kindWord(cat)):'糖')+'喂给 ta 了';
+  document.getElementById('cardDesc').textContent='快去看看 ta。';
+  document.getElementById('feedMsg').style.display='none';
+  ['eatMe','eatHim','putBack'].forEach(id=>document.getElementById(id).style.display='none');
+  const okBtn=document.getElementById('okBtn');
+  okBtn.style.display=''; okBtn.disabled=false;
+  okBtn.classList.remove('press-motion');
+  delete okBtn.dataset.pressActionPending; delete okBtn.dataset.closePending;
+  document.getElementById('card').classList.add('show');
+}
+// Figma 的 5.8s loop 是样式预览，不是产品轮播：任何当前可见按钮都只在真实按下时播一遍。
+function playCardButtonPress(button){
+  if(window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  button.classList.remove('press-motion');
+  void button.offsetWidth;   // 连续快按也从 0ms 重播，不接着上一段残帧
+  button.classList.add('press-motion');
+}
+function afterCardButtonPress(button,action){
+  if(!button.classList.contains('press-motion')){ action(); return; }
+  if(button.dataset.pressActionPending==='1') return;
+  button.dataset.pressActionPending='1';
+  let fallback=0;
+  const finish=event=>{
+    if(event&&event.animationName!=='cjButtonPress') return;
+    button.removeEventListener('animationend',finish);
+    if(fallback) clearTimeout(fallback);
+    delete button.dataset.pressActionPending;
+    action();
+  };
+  button.addEventListener('animationend',finish);
+  fallback=setTimeout(()=>finish(),360);   // Safari 后台页吞 animationend 时也不能卡死在确认态
+}
+// 谁吃这套按下动画：选糖卡三枚 + 商店的确定/取消 + 商品行的价签(=购买键)。
+// **用事件委托而不是逐个 addEventListener**：商品行每次买完都重建，直接绑会绑在已被丢弃的节点上。
+const PRESS_BTN_SEL='#cardBtns button,#scOk,#scNo,#shopBody .shopRow button,#backBtn,#dexBack,#shopBack';
+function pressBtnOf(node){
+  return node&&node.closest?node.closest(PRESS_BTN_SEL):null;
+}
+document.addEventListener('pointerdown',event=>{
+  const button=pressBtnOf(event.target);
+  if(button&&!button.disabled) playCardButtonPress(button);
+},true);
+document.addEventListener('keydown',event=>{
+  if(event.repeat||(event.key!=='Enter'&&event.key!==' ')) return;
+  const button=pressBtnOf(event.target);
+  if(button&&!button.disabled) playCardButtonPress(button);
+},true);
+document.addEventListener('animationend',event=>{
+  if(event.animationName==='cjButtonPress'&&event.target.classList)
+    event.target.classList.remove('press-motion');
+},true);
+document.getElementById('eatMe').onclick=()=>{
+  if(!canEat()){ jarBubble('预览罐只能看——这些糖不在今天的账本里'); return; }
+  eatCandy();
+};
+let feedArmed=false;
+function feedStage(on){
+  feedArmed=on;
+  document.getElementById('card').classList.toggle('feed',on);
+  document.getElementById('feedMsg').style.display=on?'':'none';   // 不 focus:键盘让玩家自己点(mamo)
+  document.getElementById('eatHim').textContent=on?'确定发送':'喂Ta吃';
+  document.getElementById('eatMe').style.display=(on||!canEat())?'none':'';
+  document.getElementById('putBack').textContent=on?'取消':'放回去';
+}
+document.getElementById('eatHim').onclick=()=>{
+  if(!canEat()){ jarBubble('预览罐只能看——这些糖不在今天的账本里'); return; }
+  if(!feedArmed){ feedStage(true); return; }
+  handCandy();
+};
+document.getElementById('feedMsg').addEventListener('blur',()=>{
+  // iOS 收键盘后偶尔把页面留在偏移/缩放态,轻推一把回原点(治标,主要靠上面的 16px 治本)
+  setTimeout(()=>{ window.scrollTo(0,0); if(document.documentElement) document.documentElement.scrollTop=0; },50);
+});
+document.getElementById('putBack').onclick=event=>{
+  if(pendingEatConfirm){   // 算了=原位回弹完再回选糖卡，别在缩放帧里同时换字+重排
+    const c=picked;
+    afterCardButtonPress(event.currentTarget,()=>{ pendingEatConfirm=false; if(c) showCard(c); });
+    return;
+  }
+  if(feedArmed){
+    // 「取消」→「放回去」会让按钮右移约 16px；等回弹结束再换态，避免 Safari 像遮罩扫过文字。
+    afterCardButtonPress(event.currentTarget,()=>feedStage(false));
+    return;
+  }
+  hideCard();
+};
+function closeCandyResult(){
+  const card=document.getElementById('card');
+  const okBtn=document.getElementById('okBtn');
+  if(okBtn.dataset.closePending==='1') return;
+  okBtn.dataset.closePending='1';
+  const isReveal=card.classList.contains('reveal');
+  const reduce=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const finish=()=>{
+    card.classList.remove('show','closing','reveal-motion','reveal','mine-detail');
+    delete okBtn.dataset.closePending;
+    document.body.classList.remove('showcase');   // 收起完成，标题与侧牌才落回
+    if(pendingBump){   // 卡片让开了,现在才播勇气 +1(mamo:之前完全被挡住看不见)
+      pendingBump=false;
+      setTimeout(bumpCourage,320);   // 等吊牌归位动画走完再飞 +1
+    }
+  };
+  if(isReveal&&!reduce){ card.classList.add('closing'); setTimeout(finish,150); }
+  else { card.classList.remove('show'); setTimeout(finish,reduce?0:180); }
+}
+const candyOkBtn=document.getElementById('okBtn');
+candyOkBtn.onclick=closeCandyResult;
+// iOS 惯性滚动刚停时，第一下触摸可能只负责刹住滚动而不补 click；touchend 直接走同一幂等关闭链。
+candyOkBtn.addEventListener('touchend',event=>{
+  event.preventDefault(); event.stopPropagation(); closeCandyResult();
+},{passive:false});
+// ── 商店（P2 样机 · mamo 2026-09-01 定玩法）──────────────────
+// 陈列柜只上**你尝过的品种**（想让一颗糖上架，先亲自承受过一次——因果律的规矩）。
+// 五小时换一批、每批四颗、一口价。买下的糖住进「我的罐子」，想吃自己去罐里拿。
+function savePocket(){ try{ localStorage.setItem('candyjar_pocket_v1',JSON.stringify(pocket)); }catch(e){}
+  if(typeof updMineBtn==='function') try{ updMineBtn(); }catch(e){} }
+function shopToast(msg){
+  const t=document.getElementById('shopToast');
+  t.textContent=msg; t.classList.add('on');
+  clearTimeout(t._h); t._h=setTimeout(()=>t.classList.remove('on'),1600);
+}
+// 点单货架（mamo 2026-09-01 拍的玩法）：**只刷图鉴里已解锁的糖**，5 小时上一批新货、
+// 每批 4 颗、一口价——没有稀有度（糖的演绎本来就没有数值强弱，"越丢人越稀有"没法自圆）。
+// 买下的糖放进「我的罐子」，想吃的时候自己去罐里拿。
+const SHOP_PRICE=5, MYSTERY_PRICE=3, SHOP_CYCLE_MS=5*3600*1000, MYSTERY_CYCLE_MS=8*3600*1000;   // 两柜错开:神秘 8h/指名 5h(mamo)
+let shopTab='mystery';
+// 每槽货架落定就不再重摇:第一次摇出来的 ids 存本地,同槽内买走只空那一格(mamo 2026-09-02:
+// 之前指名陈列没有下架标记,5✦ 可以无限回购 +10 勇气的结晶糖;顺带修掉「买一颗全柜重摇」)。
+let shelfMemo={};
+try{ shelfMemo=JSON.parse(localStorage.getItem('candyjar_shelf_v1')||'{}'); }catch(e){}
+function saveShelf(){ try{ localStorage.setItem('candyjar_shelf_v1',JSON.stringify(shelfMemo)); }catch(e){} }
+function markSold(kind,id){
+  const s=shelfMemo[kind];
+  if(s&&s.ids.includes(id)&&!s.sold.includes(id)){ s.sold.push(id); saveShelf(); }
+}
+function shelfNow(kind){
+  if(!CATALOG) return {items:[],next:0};
+  const cyc=(kind==='mystery')?MYSTERY_CYCLE_MS:SHOP_CYCLE_MS;
+  const slot=Math.floor(Date.now()/cyc);
+  const next=(slot+1)*cyc;
+  const todayJar=(SERVER&&SERVER.jar&&SERVER.jar.jar)||curJar;
+  let s=shelfMemo[kind];
+  if(!s||s.slot!==slot||(kind==='mystery'&&s.jar!==todayJar)){   // 新一批货:此刻摇一次,整槽期内认这份清单;神秘柜换了罐也重摇
+    let pool, foreignPool=[];
+    if(kind==='mystery'){   // 神秘柜:没解锁过的品种(开出来才知道是什么)
+      // 本罐优先——买进今日罐的糖得是这一罐的颜色，别让桃花劫里蹦出黄糖（mamo 2026-09-04）。
+      // 本罐的新糖不够 4 颗时，剩下的格子从别的罐补，渲染时隔一条分割线标明「其他罐子的糖」。
+      // 罐⑤世界线收束本来就是全池，不分本罐外罐。
+      // c.jar>0：机制糖是女巫常备（指名陈列有专属格），不算「新品种」——护体豆有 10 分钟时长，
+      // 以前光看 dur 会把它当效果糖抽进神秘柜（2026-09-04 验分割线时撞见）
+      const base=c=>c.jar>0&&!dexCount[c.id]&&c.dur&&c.dur[1]&&!(SERVER&&SERVER.jar&&SERVER.jar.candies.some(x=>x.id===c.id));
+      const isMine=c=>todayJar===5||c.jar===todayJar;
+      pool=CATALOG.candies.filter(c=>base(c)&&isMine(c));
+      foreignPool=CATALOG.candies.filter(c=>base(c)&&!isMine(c));
+    }else{                  // 指名陈列:吃过的才上架
+      pool=CATALOG.candies.filter(c=>dexCount[c.id]&&c.dur&&c.dur[1]);
+    }
+    const R=rnd(((slot^(kind==='mystery'?0xA11CE:0x5ADE))>>>0));
+    const p2=pool.slice(), picks=[];
+    const nSlots=(kind==='select')?3:4;
+    for(let i=0;i<nSlots&&p2.length;i++) picks.push(p2.splice(Math.floor(R()*p2.length),1)[0]);
+    const f2=foreignPool.slice(), foreign=[];
+    for(let i=picks.length;i<nSlots&&f2.length;i++){ const c=f2.splice(Math.floor(R()*f2.length),1)[0]; picks.push(c); foreign.push(c.id); }
+    if(kind==='select'){   // 第四格=女巫常备:机制糖不需解锁(药剂是她的本行,软糖才是猎奇品)
+      const mm=CATALOG.candies.filter(c=>c.id.startsWith('mm_')&&c.id!=='mm_choco');
+      if(mm.length) picks.push(mm[Math.floor(R()*mm.length)]);
+    }
+    s=shelfMemo[kind]={slot,jar:todayJar,ids:picks.map(c=>c.id),sold:[],foreign};
+    saveShelf();
+  }
+  const items=s.ids.filter(id=>!s.sold.includes(id))
+    .map(id=>CATALOG.candies.find(c=>c.id===id)).filter(Boolean);
+  return {items,next,foreign:new Set(s.foreign||[])};
+}
+function shopRow({nm,ds,price,disabled,onBuy,isMM,entry}){
+  const row=document.createElement('div'); row.className='shopRow'+(isMM?' mm':'');
+  if(!nm) row.classList.add('description-only');
+  const pic=document.createElement('div'); pic.className='pic';
+  const snap=entry?snapCandy(entry):null;   // 左槽放小糖(mamo);上下文吃紧拿不到就留空槽
+  if(snap){ const im=document.createElement('img'); im.src=snap; pic.appendChild(im); }
+  const t=document.createElement('div'); t.className='txt';
+  const a=document.createElement('div'); a.className='nm'; a.textContent=nm;
+  const rule=document.createElement('i'); rule.className='rule';
+  const b2=document.createElement('div'); b2.className='ds'; b2.textContent=ds;
+  if(nm) t.append(a,rule,b2);
+  else { t.classList.add('appearance-only'); t.append(b2); }
+  const btn=document.createElement('button');
+  btn.textContent=price+' ✦ 勇气';   // Figma 价签就是价格本身,点它即买
+  if(disabled) btn.disabled=true; else btn.onclick=onBuy;
+  row.append(pic,t,btn);
+  return row;
+}
+function buildShop(){
+  const body=document.getElementById('shopBody');
+  body.innerHTML='';
+  document.getElementById('shopCourage').textContent=courage;
+  document.getElementById('tabMystery').classList.toggle('on',shopTab==='mystery');
+  document.getElementById('tabSelect').classList.toggle('on',shopTab==='select');
+  const {items,next,foreign}=shelfNow(shopTab);
+  const mins=Math.max(1,Math.ceil((next-Date.now())/60000));
+  const hh=Math.floor(mins/60), mm2=mins%60;
+  document.getElementById('shopRefresh').textContent='刷新时间  '+(hh?hh+' 小时 ':'')+mm2+' 分后';
+  if(!items.length){
+    const e=document.createElement('div'); e.className='shopEmpty';
+    e.textContent=shopTab==='mystery'
+      ?'未知的都被你尝遍了——这罐的世界对你已经没有秘密。'
+      :'陈列柜只收你尝过的味道。想让它上架，先亲自尝过。';
+    body.appendChild(e);
+  }
+  let dividerDone=false;
+  items.forEach(c=>{
+    const isMM=c.id.startsWith('mm_');
+    if(shopTab==='mystery'){
+      if(!dividerDone&&foreign&&foreign.has(c.id)){   // 本罐的新糖不够了，下面是别的罐来的
+        dividerDone=true;
+        const d=document.createElement('div'); d.className='shopDivider';
+        d.innerHTML='<i></i><span>其他罐子的糖 · <em>Des autres bocaux</em></span><i></i>';
+        body.appendChild(d);
+      }
+      const mp=(SERVER&&SERVER.mystery_price)||MYSTERY_PRICE;   // 阶梯价由后端定：当天第几颗（mamo 2026-09-05：3 3 4 4 5 5）
+      body.appendChild(shopRow({
+        nm:'',
+        ds:c.shop||'女巫没写标签。',
+        price:mp, disabled:courage<mp, isMM, entry:c,
+        onBuy:()=>askBuy(c,'today',mp)
+      }));
+    }else{
+      const usedUp=onceUsed.indexOf(c.id)>=0;   // 限购糖今天买过了（勇气结晶豆：一天一颗，mamo 2026-09-05）
+      body.appendChild(shopRow({
+        nm:'「'+fullName(c)+'」',
+        ds:(c.reveal||c.taste||'')+(usedUp?'　（今天这颗已经买过一次了，明天再来）':''),
+        price:SHOP_PRICE, disabled:usedUp||courage<SHOP_PRICE, isMM, entry:c,
+        onBuy:()=>askBuy(c,'reserve',SHOP_PRICE)
+      }));
+    }
+  });
+}
+function serverBuy(c,dest,price){
+  const ok=document.getElementById('scOk'); ok.disabled=true;   // 等回执期间防连点
+  fetch('/candyjar/buy',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({id:c.id,dest,price})})
+    .then(r=>r.json()).then(res=>{
+      ok.disabled=false;
+      if(!res||res.error){ scClose(); shopToast(res&&res.error||'买不了'); return; }
+      if(res.courage&&res.courage.user!=null){ courage=res.courage.user; updCourage(); }
+      if(res.mystery_price!=null&&SERVER) SERVER.mystery_price=res.mystery_price;   // 买一颗，下一颗涨一档
+      if(Array.isArray(res.once_used)) onceUsed=res.once_used;
+      pocket=(res.reserve||[]).map(id=>({id}));
+      if(res.jar&&SERVER&&SERVER.jar) SERVER.jar.candies=res.jar.candies;
+      markSold(dest==='today'?'mystery':'select',c.id);   // 当槽下架,补货前不再回购
+      savePocket(); buildShop();
+      if(dest==='today'){ if(!viewMine) fillJar(); }
+      else if(viewMine) fillJar();
+      // 原弹窗原地变「购买完成」态:说明行撤掉,独一枚橙红按钮(mamo 2026-09-02)
+      scOpen(dest==='today'?'':'「'+fullName(c)+'」','','完成购买',false,dest==='today'?c:null);
+    }).catch(()=>{ ok.disabled=false; scClose(); shopToast('联不上女巫'); });
+}
+function tabGo(which,btn){
+  shopTab=which; buildShop();
+  btn.classList.remove('tilt'); void btn.offsetWidth; btn.classList.add('tilt');   // 点击:歪着晃一下(mamo)
+}
+document.getElementById('tabMystery').onclick=e=>tabGo('mystery',e.currentTarget);
+document.getElementById('tabSelect').onclick=e=>tabGo('select',e.currentTarget);
+// ── 购买二次确认(mamo:用喂糖那套框和按钮) ──
+let scPending=null;
+function scOpen(title,desc,okText,confirm,previewEntry){
+  document.getElementById('scTitle').textContent=title;
+  const preview=document.getElementById('scPreview'); preview.innerHTML='';
+  const src=previewEntry?(previewEntry.jar===0?'./assets/candyjar/ui/murphy-dex.svg':snapCandy(previewEntry)):null;
+  if(src){ const img=document.createElement('img'); img.src=src; img.alt=''; preview.append(img); }
+  preview.classList.toggle('show',!!src);
+  document.getElementById('scDesc').textContent=desc;
+  document.getElementById('scOk').textContent=okText;
+  document.getElementById('scNo').style.display=confirm?'':'none';   // 结果态只留一个按钮
+  document.querySelector('#shopConfirm .card').classList.toggle('done',!confirm);
+  document.getElementById('shopConfirm').classList.add('show');
+}
+function scClose(){ scPending=null; scChoose=false; document.getElementById('shopConfirm').classList.remove('show'); }
+function askBuy(c,dest,price){
+  scPending={c,dest,price};
+  scOpen(dest==='today'?'':'「'+fullName(c)+'」',
+    (dest==='today'
+      ?'花 '+price+' ✦ 勇气把这颗新品种混进今日罐——\n开出来是什么，吃到才知道。'
+      :'花 '+price+' ✦ 勇气把这颗买回「我的储藏罐」，\n想吃的时候自己去拿。'),
+    '确定购买',true,dest==='today'?c:null);
+}
+// 这两枚按下后卡片当场变样(换成完成态/整个关掉),所以照选糖卡的先例**等按下动画播完再动作**,
+// 否则按下的那一帧就被新排版盖掉、动画等于没播。
+document.getElementById('scOk').onclick=event=>{
+  const p=scPending; scPending=null;
+  afterCardButtonPress(event.currentTarget,()=>{
+    if(scChoose){ scChoose=false; serverChoose(); return; }   // 选罐确认
+    if(p) serverBuy(p.c,p.dest,p.price);   // 弹窗留在原地等回执,成功后原地变「购买完成」
+    else scClose();                        // 完成态:这一下就是关卡片
+  });
+};
+document.getElementById('scNo').onclick=event=>afterCardButtonPress(event.currentTarget,scClose);
+document.getElementById('shopConfirm').onclick=e=>{ if(e.target.id==='shopConfirm'&&!document.getElementById('scOk').disabled) scClose(); };
+// ── 我的罐子:主页切换(mamo 2026-09-01)──────────────────────
+function updMineBtn(){
+  const b=document.getElementById('mineBtn');
+  b.classList.toggle('return-today',viewMine);
+  b.querySelector('.t').textContent=picking?'选这罐':(viewMine?'回到今日罐':'我的储藏罐');
+}
+document.getElementById('mineBtn').onclick=()=>{
+  if(picking){ askPick(); return; }   // 选罐态：这颗按钮就是「选这罐」
+  viewMine=!viewMine;
+  const span=document.getElementById('todayJarBtn').querySelector('span');
+  const topText=document.querySelector('.tj-top textPath');
+  if(viewMine){
+    span.style.display='none';
+    topText.textContent='MA RÉSERVE';
+    document.getElementById('todayArcText').textContent='我的储藏罐';
+  }else{
+    span.style.display='';
+    topText.textContent="TODAY'S JAR";
+    setJarText();
+  }
+  updMineBtn(); applyJarGlass(); applyJarLabel(); fillJar(); wake&&wake();
+  shakeT=0;   // 切换视图=罐子跳一下(mamo:播一次跳的动画)
+  if(viewMine&&!pocket.length) jarBubble('空空如也，去商店里看看吧');
+  if(!viewMine&&SERVER&&SERVER.jar&&!SERVER.jar.candies.length)
+    jarBubble('今日罐见底了——续一罐的柜台，女巫还在搭');
+};
+updMineBtn();
+// 吊牌的吊落摆动只在**标题整包从上方落下**时播（入场那一次）。
+// 关卡片时不再单独重播——只有吊牌动、其余标题不动，反而怪（mamo 2026-09-01）。
+function jarBubble(msg,hold){
+  const t=document.getElementById('jarBubble');
+  t.textContent=msg; t.classList.add('on');
+  t.classList.remove('out');
+  clearTimeout(t._h); t._h=setTimeout(()=>{ t.classList.remove('on'); t.classList.add('out');
+    setTimeout(()=>t.classList.remove('out'),450); },hold||2400);
+}
+document.getElementById('shopBtn').onclick=()=>{ buildShop(); document.getElementById('shop').classList.add('show'); };
+function closeFullScreenView(id){
+  // 若主罐曾被 iOS 收走，在遮罩仍盖住画面时刷新；不会闪回主罐、更不会二次跳到旧页面。
+  if(mainContextLost){ location.reload(); return; }
+  document.getElementById(id).classList.remove('show');
+}
+document.getElementById('shopBack').onclick=e=>afterCardButtonPress(e.currentTarget,()=>closeFullScreenView('shop'));
+savePocket();
+
+// ── 图鉴:四页签 + 3D 快照 + 详情页 ─────────────────────────────
+let snapR=null; const snapCache={};
+// 图鉴用的背景板:必须在 3D 场景里——糖是半透材质,透出的东西只能来自场景内部;
+// CSS 背景在画布之后,糖透不到,于是"透出一片空"(图鉴的糖不如罐里通透的真正原因,mamo 2026-08-31 问)
+// 图鉴 3D 的背景＝**一个纯色**（mamo 2026-09-02：不要图案，就用界面底色）。
+// 仍然要在画布里设这个色而不能让画布透明：软糖是 transmission 材质，
+// 要"透过去看到东西"才不发黑。颜色和所在容器一致，方块就消失在卡片里了。
+//   详情卡 #ddPanel 与图鉴格 .dexCell 底都 = #fcf5e6。
+function jarBg(hex){ return new T.Color(hex); }
+function makeEntryMesh(entry){
+  let mesh;
+  if(entry.jar===0){
+    const hex=Object.keys(MM_ID).find(h=>MM_ID[h]===entry.id)||'#7e5135';
+    mesh=new T.Mesh(MM_GEO,new T.MeshPhysicalMaterial({color:new T.Color(hex),
+      roughness:.13,clearcoat:1,clearcoatRoughness:.05,envMapIntensity:.9}));
+  } else {
+    const sch=SCHEMES.find(x=>x.name===entry.scheme)||SCHEMES[0];
+    const gi=Math.max(0,SHAPE_NAMES.indexOf(entry.shape));
+    const t=sch.trans!=null?sch.trans:.15;
+    const bot=new T.Color(sch.grad[0]), mid=new T.Color(sch.grad[1]), top=new T.Color(sch.grad[2]);
+    const m=new T.MeshPhysicalMaterial({color:0xffffff,transmission:.96,thickness:1.15-.3*t,
+      ior:1.42,roughness:.9-.55*t,clearcoat:.22,clearcoatRoughness:.62-.3*t,
+      attenuationColor:mid.clone(),attenuationDistance:1.15*(0.4+t*4.2),
+      envMapIntensity:.55+.5*t,
+      normalMap:SUGAR.normalMap,normalScale:new T.Vector2(.6,.6),roughnessMap:SUGAR.roughnessMap});
+    const lum=mid.r*.2126+mid.g*.7152+mid.b*.0722;
+    const tint=mid.clone().offsetHSL(0,.06,(1-lum)*.34).multiplyScalar(.3+(1-lum)*1.0);
+    m.onBeforeCompile=sh=>{
+      sh.uniforms.sssTint={value:tint};
+      sh.uniforms.gradBot={value:bot.clone()};
+      sh.uniforms.gradMid={value:mid.clone().multiplyScalar(1.25)};
+      sh.uniforms.gradTop={value:top.clone().multiplyScalar(1.55)};
+      sh.uniforms.gradMidPos={value:sch.mid||.5};
+      sh.uniforms.uHH={value:.9};
+      sh.vertexShader=sh.vertexShader
+        .replace('#include <common>','#include <common>\nvarying float vWY;\nvarying float vCWY;')
+        .replace('#include <begin_vertex>','#include <begin_vertex>\nvec4 lwp=modelMatrix*vec4(transformed,1.0);vWY=lwp.y;vCWY=modelMatrix[3][1];');
+      sh.fragmentShader=sh.fragmentShader
+        .replace('#include <common>','#include <common>\nuniform vec3 sssTint;\nuniform vec3 gradBot;\nuniform vec3 gradMid;\nuniform vec3 gradTop;\nuniform float gradMidPos;\nuniform float uHH;\nvarying float vWY;\nvarying float vCWY;')
+        .replace('#include <dithering_fragment>',[
+'float gt=clamp((vWY-vCWY)/(2.0*uHH)+0.5,0.0,1.0);',   // 标尺=糖自身世界中心±半高:摇/举/落/弹/飞全自动跟随
+'vec3 gc=(gt<gradMidPos)?mix(gradBot,gradMid,gt/gradMidPos):mix(gradMid,gradTop,(gt-gradMidPos)/(1.0-gradMidPos));',
+'gl_FragColor.rgb*=gc;',
+'float cRim=pow(1.0-abs(dot(normalize(normal),normalize(vViewPosition))),1.15)*0.62;',
+'gl_FragColor.rgb+=sssTint*cRim;',
+'#include <dithering_fragment>'].join('\n'));
+    };
+    mesh=new T.Mesh(CANDY_GEOS[gi],m);
+  }
+  return mesh;
+}
+function snapCandy(entry){
+  if(snapCache[entry.id]) return snapCache[entry.id];
+  if(!snapR){
+    try{
+      snapR=new T.WebGLRenderer({antialias:true,alpha:true});
+      lockRendererSRGB(snapR);
+      snapR.setSize(200,200); snapR.toneMapping=T.ACESFilmicToneMapping; snapR.toneMappingExposure=.62;
+    }catch(e){ snapR=null; console.warn('[snap] WebGL 上下文建不出来,图鉴用占位格',e); return null; }
+  }
+  clearTimeout(snapR._gc);
+  snapR._gc=setTimeout(()=>{ try{snapR.dispose(); snapR.forceContextLoss();}catch(e){} snapR=null; },4000);   // 批量快照完就还给系统
+  const sc=new T.Scene();
+  sc.add(new T.HemisphereLight(0xffedcd,0xd6c0a2,.32));
+  const dl=new T.DirectionalLight(0xffdfa8,1.9); dl.position.set(-13,20,14); sc.add(dl);
+  sc.environment=scene.environment;
+  sc.background=jarBg(0xfcf5e6);   // 和卡片完全同色，快照不再露出一圈白底
+  const mesh=makeEntryMesh(entry);
+  if(entry.shape==='花果子') mesh.rotation.x=1.27;   // 花面法线朝相机，不再以薄边躺平
+  sc.add(mesh);
+  const pl=new T.PointLight(0xffcf9a,2.2,14,2); pl.position.set(0,4.6,0); sc.add(pl);
+  const cam=new T.PerspectiveCamera(17,1,.1,80);
+  cam.position.set(7.5,3.8,12.4); cam.lookAt(0,.05,0);
+  snapR.render(sc,cam);
+  const url=snapR.domElement.toDataURL();
+  mesh.material.dispose(); snapCache[entry.id]=url; return url;
+}
+const DEX_TABS=[[1,'宿命论'],[2,'维特根斯坦'],[3,'桃花劫'],[4,'庄周梦蝶'],[0,'墨菲定律']];   // 会出事的糖,归墨菲管；名字同样以图鉴为准(dexName)
+let dexTab=1;
+function mmJarsOf(entry){ const hex=Object.keys(MM_ID).find(h=>MM_ID[h]===entry.id);
+  return hex?(MM_JARS[hex]||[1]):[1]; }
+function renderDex(){
+  const tabs=document.getElementById('dexTabs'); tabs.innerHTML='';
+  for(const [j,fallback] of DEX_TABS){
+    const name=dexName(j,fallback);
+    const b=document.createElement('button'); b.textContent=name;
+    if(j===dexTab) b.classList.add('on');   // 选中:黑底白字,字下一枚宝石(::after)
+    b.onclick=()=>{ dexTab=j; renderDex(); };
+    tabs.append(b);
+  }
+  document.getElementById('dexMurphyNote').classList.toggle('show',dexTab===0);
+  const grid=document.getElementById('dexGrid'); grid.innerHTML='';
+  const list=CATALOG?CATALOG.candies.filter(c=>
+    dexTab===0?c.jar===0:c.jar===dexTab):[];
+  for(const entry of list){
+    const n=dexCount[entry.id]||0;
+    const cell=document.createElement('div');
+    if(n>0){
+      cell.className='dexCell';
+      const snap=dexTab===0?'./assets/candyjar/ui/murphy-dex.svg':snapCandy(entry);   // 墨菲定律用 Figma 专属图，不伪装成 3D 糖
+      cell.innerHTML='<div class="pic">'+(snap?('<img src="'+snap+'" alt="">'):'')+'</div>'   // 次数只在详情底部报(Figma 格子上没有角标)
+        +'<span class="nm">'+fullName(entry)+'</span>';
+      cell.onclick=()=>showDexDetail(entry);
+    } else {   // 未收录:虚线圆 + ? + 灰字(Figma)
+      cell.className='dexCell miss';
+      cell.innerHTML='<div class="pic"><span class="q">?</span></div><span class="nm">未收录</span>';
+    }
+    grid.append(cell);
+  }
+  const totalAll=CATALOG?CATALOG.candies.length:57;
+  const gotAll=Object.keys(dexCount).filter(k=>dexCount[k]>0).length;
+  document.getElementById('dexCnt').textContent='收集进度 '+gotAll+' / '+totalAll;
+  document.querySelector('#dexBar i').style.width=(totalAll?Math.round(gotAll/totalAll*1000)/10:0)+'%';
+}
+let ddR=null, ddLoop=null;
+function showDexDetail(entry){
+  const panel=document.getElementById('ddPanel');
+  panel.classList.remove('settled');
+  panel.classList.toggle('mechanism',entry.jar===0);
+  document.getElementById('ddTitle').textContent='「'+fullName(entry)+'」';
+  document.getElementById('ddStage').style.display=(entry.jar===0)?'none':'flex';
+  document.getElementById('ddLore').textContent=entry.lore||'来历不明。';
+  document.getElementById('ddTaste').textContent='它尝起来'+entry.taste;
+  document.getElementById('ddReveal').textContent=endDot(entry.reveal);   // 只留判词:演法只注入 AI,图鉴永不展示(演出保鲜,mamo 2026-09-04)
+  document.getElementById('ddCount').textContent='已吃 '+(dexCount[entry.id]||0)+' 次';
+  const jarLabel=dexName(entry.jar||0,(DEX_TABS.find(x=>x[0]===(entry.jar||0))||[0,'？'])[1]);
+  document.getElementById('ddJar').textContent=jarLabel;   // 胶囊①:这颗属于哪一罐（写成 jarName 会把函数源码印上去——2026-09-05 mamo 截图报的）
+  const frame=document.getElementById('ddFrame');
+  if(ddR) releaseDD();   // 同一个 canvas 只能挂一个 WebGL 上下文，新建前必须先还
+  frame.classList.remove('preview-ready');
+  document.getElementById('ddPoster').src=(entry.jar===0)?'':(snapCache[entry.id]||'');
+  document.getElementById('dexDetail').classList.add('show');
+  // 浮动 3D:小渲染器持续转这颗糖(mamo:图鉴里要会动的)
+  if(entry.jar===0) return;   // 机制糖详情没有图片，也不白占一枚 WebGL 上下文
+  // 在浏览器画出弹板第一帧前就准备好动态 canvas：仍以格子快照兜底，但玩家不会再目睹
+  // PNG → WebGL 的中途换源，因此也不会看到 iPhone 广色域下那次突然变亮/变饱和。
+  buildDDPreview(entry);
+}
+function buildDDPreview(entry){
+  try{
+    ddR=new T.WebGLRenderer({canvas:document.getElementById('ddCv'),antialias:true,alpha:true});
+    lockRendererSRGB(ddR);
+    ddR.setSize(278,160,false); ddR.toneMapping=T.ACESFilmicToneMapping; ddR.toneMappingExposure=.62;   // 独立预览无糖堆遮光，压低曝光保住颜色
+  }catch(e){ ddR=null; console.warn('[dd] WebGL 上下文建不出来,详情页只显示文字',e); }
+  if(!ddR) return;   // 快照继续留着，不能再拿 null renderer 渲染
+  const sc=new T.Scene();
+  sc.add(new T.HemisphereLight(0xffedcd,0xd6c0a2,.32));
+  const dl=new T.DirectionalLight(0xffdfa8,1.9); dl.position.set(-13,20,14); sc.add(dl);
+  sc.environment=scene.environment;
+  sc.background=null; ddR.setClearColor(0x000000,0);   // 透明画布，不能再盖住糖果外的椭圆装饰框
+  const mesh=makeEntryMesh(entry);
+  if(entry.shape==='花果子') mesh.rotation.x=1.27;   // 花面法线朝相机(mamo)
+  sc.add(mesh);
+  const pl=new T.PointLight(0xffcf9a,2.2,14,2); pl.position.set(0,4.6,0); sc.add(pl);   // 与主罐同一套灯光
+  const cam=new T.PerspectiveCamera(17,278/160,.1,80);   // 长焦:透视基本压平(mamo 二调);比例跟 Figma 的 159×100 框
+  cam.position.set(7.8,3.9,12.9); cam.lookAt(0,.05,0);
+  if(ddLoop) cancelAnimationFrame(ddLoop.raf);
+  const st={raf:0,mesh,sc,cam,last:performance.now()};
+  ddLoop=st;
+  ddR.render(st.sc,st.cam);
+  document.getElementById('ddFrame').classList.add('preview-ready');
+  (function spin(){
+    if(!ddR||!document.getElementById('dexDetail').classList.contains('show')||ddLoop!==st) return;
+    const now=performance.now(); const _dd=(now-st.last)/1000;
+    if(entry.shape==='花果子') st.mesh.rotation.z+=_dd*.42;   // 只在花面内慢转，始终看得到五瓣
+    else { st.mesh.rotation.y+=_dd*.55; st.mesh.rotation.x+=_dd*.31; }
+    st.last=now;
+    ddR.render(st.sc,st.cam);
+    st.raf=requestAnimationFrame(spin);
+  })();
+}
+// 详情 3D 的释放**必须在关闭那一刻做**,不能挂在渲染循环里等它自己发现——
+// rAF 一停(切后台/省电休眠/画面不可见),循环就不再跑,上下文永远不还,
+// 反复开关几次就把 iOS 的 WebGL 上下文额度耗光:新的建不出来(getContext 返回 null,
+// three 里表现为 getShaderPrecisionFormat of null),连主罐子的上下文都会被系统回收
+// → mamo 2026-09-02 截到的「罐子整个消失」+ 图鉴详情报错。
+function releaseDD(){
+  if(ddLoop){ cancelAnimationFrame(ddLoop.raf);
+    try{ ddLoop.mesh.material.dispose(); ddLoop.mesh.geometry&&ddLoop.mesh.geometry.dispose(); }catch(e){}
+    ddLoop=null; }
+  if(ddR){
+    try{ ddR.dispose(); ddR.forceContextLoss(); }catch(e){}
+    ddR=null;
+    // ⚠️ forceContextLoss() 把这块 canvas **永久废掉**了(WebGL 规范:loseContext 后
+    // 不 restoreContext 就再也拿不到上下文)——不换新的,第二次开详情就是破图
+    // (mamo 2026-09-02 截到的那个哭脸方块)。彻底还上下文 + 换块干净画布,两头都要。
+    const old=document.getElementById('ddCv');
+    if(old&&old.parentNode){
+      const nu=document.createElement('canvas');
+      nu.id='ddCv'; nu.width=278; nu.height=160;
+      old.parentNode.replaceChild(nu,old);
+    }
+  }
+  const frame=document.getElementById('ddFrame');
+  if(frame) frame.classList.remove('preview-ready');
+}
+document.getElementById('ddPanel').addEventListener('animationend',e=>{
+  if(e.animationName==='ddCardRise') e.currentTarget.classList.add('settled');
+});
+document.getElementById('dexDetail').onclick=e=>{ if(e.target.id==='dexDetail'){ e.target.classList.remove('show'); releaseDD(); } };
+document.getElementById('dexBtn').onclick=()=>{
+  dexTab=(curJar>=1&&curJar<=4)?curJar:1;
+  renderDex();
+  document.getElementById('dex').classList.add('show');
+};
+document.getElementById('dexBack').onclick=e=>afterCardButtonPress(e.currentTarget,()=>closeFullScreenView('dex'));
+
+
+
+updCourage();
+function setJarText(){
+  const el=document.getElementById('todayJarBtn');
+  el.querySelector('span').textContent=picking?'请选择':'今日';
+  document.getElementById('todayArcText').textContent=picking?'今日的糖罐':(jarName(curJar)+'之罐');   // 两侧不加点(mamo)；选罐态照 Figma 牌子文案
+}
+setJarText();
+// 罐子页自己也每分钟对一次后端账本(mamo:点进 jar 里也应该看到倒计时)
+setInterval(()=>{ fetch('/candyjar').then(r=>r.ok?r.json():null).then(sv=>{
+  if(sv&&sv.active) applyServerEffects(sv.active); }).catch(()=>{}); }, 60000);
+// 样机后门:点今日罐名循环切罐(正式版删——mamo 要看罐⑤混合效果)
+// 罐子判词以图鉴数据为准（candies.json 的 _meta.jars[n].line）——mamo 在总账里改，落库即生效。
+// 2026-09-04 之前硬编码在这里，她改了总账 PWA 却还是旧的。下面这份只当图鉴没加载出来时的兜底。
+// 罐名同判词，以图鉴数据为准（_meta.jars[n].name）；下面那两张硬编码表只是兜底。
+function jarName(k){
+  const m=CATALOG&&CATALOG._meta&&CATALOG._meta.jars&&CATALOG._meta.jars[k];
+  return (m&&m.name)||JAR_NAMES[k]||'';
+}
+function dexName(j,fallback){ return j===0?fallback:(jarName(j)||fallback); }   // 罐⓪墨菲=机制糖，图鉴里没有它的条目
+function jarLine(k){
+  const m=CATALOG&&CATALOG._meta&&CATALOG._meta.jars&&CATALOG._meta.jars[k];
+  return (m&&m.line)||JAR_LINES[k]||'';
+}
+const JAR_LINES={   // 兜底文案（图鉴拿不到时才用）
+  1:'闭着眼拿了三次，三次都是它。这罐子有内幕。',
+  2:'我语言的界限，就是我世界的界限。',
+  3:'这一罐颜色个个眉目含情。……糖冲我含什么情？不妙，撤。',   // 桃花劫(mamo 在总账里写的;原先误挂墨菲判词)
+  4:'不知周之梦为蝴蝶与，蝴蝶之梦为周与。',
+  5:'查了一圈，所有线索都指向同一颗。烦。',
+  mine:'都是你自己带回来的，吃吧，每一颗都花了钱。'   // mamo 2026-09-05 定稿
+};
+document.getElementById('todayJarBtn').onclick=()=>{
+  const el=document.getElementById('todayJarBtn'), wrap=document.querySelector('.today-wrap');
+  el.classList.remove('tap'); void el.offsetWidth; el.classList.add('tap');   // 牌子抖
+  if(wrap){ wrap.classList.remove('tap'); void wrap.offsetWidth; wrap.classList.add('tap'); }   // 绳子跟着扯
+  jarBubble(viewMine?jarLine('mine'):(jarLine(curJar)+((isTodayJar()||picking)?'':'　（预览·只能看）')));
+};
+// ── 选罐（mamo 2026-09-05：每天第一次打开从五罐里选一罐，跨天按零点；大人没选之前只能等）──
+// 同一个场景里的同一个罐子换装：换玻璃色、装那罐当天的真糖、跳一下——3D 开销与平时一样，
+// 不另起渲染器（弹窗里另起的糖"效果和罐子里不一样"，根子就在这）。Figma 1219:22176。
+function enterPick(ch){
+  picking=true; PICK=ch; viewMine=false;
+  curJar=ch.suggest||curJar;   // 起手停在按日期轮到的那罐
+  document.body.classList.add('picking');
+  setJarText(); updMineBtn(); applyJarGlass(); applyJarLabel(); fillJar(); wake&&wake();
+  setTimeout(()=>{ shakeT=0; jarBubble(jarLine(curJar),3400); },900);
+}
+function pickStep(d){
+  if(!picking) return;
+  curJar=((curJar-1+d+5)%5)+1;
+  setJarText(); applyJarGlass(); applyJarLabel(); fillJar(); wake&&wake();
+  shakeT=0;   // 换罐=罐子跳一下（同储藏罐切换）
+  jarBubble(jarLine(curJar),3400);   // 判词浮现（Figma「浮现文字」5.8s 一轮：进 1s·停 3s·出 1.5s）
+}
+document.getElementById('pickPrev').onclick=()=>pickStep(-1);
+document.getElementById('pickNext').onclick=()=>pickStep(1);
+function askPick(){   // 二次确认：沿用商店买糖那张确认卡（mamo 2026-09-05 拍）
+  scPending=null;
+  scOpen('就选「'+jarName(curJar)+'之罐」？','今天只能开这一罐，明天零点才换。','就它了',true);
+  scChoose=true;
+}
+let scChoose=false;
+function serverChoose(){
+  fetch('/candyjar/choose',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({jar:curJar})})
+    .then(r=>r.json()).then(res=>{
+      if(!res||!res.jar){ scOpen('没开成',(res&&res.error)||'罐子没搭理我，再试一次。','知道了',false); return; }
+      if(!SERVER) SERVER={}; SERVER.jar=res.jar; curJar=res.jar.jar;
+      picking=false; PICK=null; document.body.classList.remove('picking');
+      scClose();
+      setJarText(); updMineBtn(); fillJar(); shakeT=0; jarBubble(jarLine(curJar));
+    }).catch(()=>scOpen('没开成','罐子没搭理我，再试一次。','知道了',false));
+}
+applyJarGlass(); applyJarLabel();
+setTimeout(()=>{ shakeT=0; },800);   // 开场罐子自己抖一下=「点我」的暗示(mamo)
+
+const clock=new T.Clock();
+// ── 省电：限帧 30fps + 静置休眠 + 隐藏即停 ──
+let idleSince=performance.now(), asleep=false, lastFrame=0;
+const BASE_SPIN=controls.autoRotateSpeed;   // 记住原始转速,收住后要能恢复
+const FRAME_MS=1000/30;          // 透射材质每帧成本高，30fps 与 60fps 观感差别很小、功耗减半
+const IDLE_SLEEP_MS=45000;       // 静置 45s 后彻底停渲染（任何触摸/消息唤醒）
+function wake(){
+  idleSince=performance.now();
+  controls.autoRotateSpeed=BASE_SPIN;   // 醒来恢复转速
+  if(asleep){ asleep=false; renderer.setAnimationLoop(frame); }
+}
+['pointerdown','touchstart','wheel','keydown'].forEach(ev=>
+  addEventListener(ev,wake,{passive:true}));
+document.addEventListener('visibilitychange',()=>{ document.hidden?sleep():wake(); });
+function sleep(){ if(!asleep){ asleep=true; renderer.setAnimationLoop(null); } }
+// 父窗口收起/展开全屏层时通知这里（display:none 的 iframe 不一定会自动停 rAF）
+addEventListener('message',e=>{
+  if(!e.data||typeof e.data!=='object') return;
+  if(e.data.type==='candyjar:sleep') sleep();
+  if(e.data.type==='candyjar:wake') wake();
+});
+window.__cjStats={frames:0,asleep:()=>asleep,idleMs:()=>performance.now()-idleSince};
+function overlayOpen(){
+  const g=id=>{ const e=document.getElementById(id); return e&&e.classList.contains('show'); };
+  return g('shop')||g('dex')||g('dexDetail')||g('fxdt');
+}
+function frame(){
+  const now=performance.now();
+  if(overlayOpen()) return;   // 商店/图鉴/详情全屏盖着,3D 一帧都不画(逛商店=发烫大户,mamo 报复热)
+  if(now-lastFrame<FRAME_MS) return;   // 限帧
+  lastFrame=now; window.__cjStats.frames++;
+  const idle=now-idleSince;
+  // 休眠前 5 秒把自转渐渐收住，罐子缓缓停下再停机（直接冻住太生硬）
+  if(idle>IDLE_SLEEP_MS-5000){
+    const k=Math.max(0,1-(idle-(IDLE_SLEEP_MS-5000))/5000);
+    controls.autoRotateSpeed=BASE_SPIN*k;
+  }else if(controls.autoRotateSpeed!==BASE_SPIN){
+    controls.autoRotateSpeed=BASE_SPIN;
+  }
+  if(idle>IDLE_SLEEP_MS && !eatFx && !pickFx && !handFx && !returnFx.length && shakeT<0){   // returnFx 是数组:原来写 !returnFx 恒为 false,停机从没触发过(mamo:"没动它也一直在转")
+    sleep(); return;                    // 静置且无动画 → 停机
+  }
+  render();
+}
+renderer.setAnimationLoop(frame);
+function render(){
+  const dt=Math.min(.05,clock.getDelta()), t=clock.elapsedTime;
+  warm.intensity=2+Math.sin(t*1.2)*.35;
+  if(shakeT>=0){
+    shakeT+=dt;
+    const k=Math.exp(-shakeT*3.2), w=Math.sin(shakeT*16)*k;
+    jar.rotation.z=w*.085; jar.rotation.x=Math.sin(shakeT*13+1)*k*.05;
+    for(const it of shakables){
+      if(isBusy(it.node)) continue;   // 正在举起/落下/弹跳/飞走的糖不归摇罐管(否则被按回罐里)
+      const hop=Math.max(0,Math.sin(shakeT*11+it.phase))*k;
+      it.node.position.y=it.baseY+hop*.85;
+      it.node.rotation.y+=dt*w*3;
+    }
+    if(shakeT>2.2){ shakeT=-1; jar.rotation.set(0,0,0);
+      for(const it of shakables){ if(!isBusy(it.node)) it.node.position.y=it.baseY; } }
+  }
+  // 相机拉回标准机位
+  if(camFx){ camFx.t=Math.min(1,camFx.t+dt*.85);
+    const k=camFx.t*camFx.t*(3-2*camFx.t);
+    controls.target.lerpVectors(camFx.t0,camFx.t1,k);
+    // 方向和距离分开插值:直线插值在大角度会先穿近再拉远,像被拽了一把(mamo 报的运镜突兀)
+    const d0=camFx.p0.clone().sub(camFx.t0), d1=camFx.p1.clone().sub(camFx.t1);
+    const dir=d0.clone().normalize().lerp(d1.clone().normalize(),k).normalize();
+    const dist=d0.length()+(d1.length()-d0.length())*k;
+    camera.position.copy(controls.target).add(dir.multiplyScalar(dist));
+    if(camFx.t>=1) camFx=null; }
+  // 开盖:盖子飞到旁边地上,不回去
+  if(lidFx){ lidFx.t=Math.min(1,lidFx.t+dt*1.4);
+    const k=lidFx.t*lidFx.t*(3-2*lidFx.t);
+    lid.position.lerpVectors(lidFx.p0,lidFx.p1,k);
+    lid.position.y+=Math.sin(k*Math.PI)*2.2;
+    lid.rotation.z=lidFx.r0+(lidFx.r1-lidFx.r0)*k;
+    if(lidFx.t>=1) lidFx=null; }
+  // 举糖展示
+  if(pickFx){
+    pickFx.t=Math.min(1,pickFx.t+dt*2.2);
+    const k=pickFx.t*pickFx.t*(3-2*pickFx.t);
+    pickFx.node.position.lerpVectors(pickFx.from,pickFx.to,k);
+    pickFx.node.rotation.y+=dt*1.2;
+  }
+  // 归位(支持多颗同时落回)
+  for(let i=returnFx.length-1;i>=0;i--){
+    const r=returnFx[i]; r.t=Math.min(1,r.t+dt*3.2);   // 落回提速(mamo:有点慢)——2.2≈0.45s → 3.2≈0.31s
+    const k=r.t*r.t*(3-2*r.t);
+    r.node.position.lerpVectors(r.from,r.to,k);
+    if(r.rot){ r.node.rotation.x+=(r.rot.x-r.node.rotation.x)*k;
+      r.node.rotation.z+=(r.rot.z-r.node.rotation.z)*k; }
+    if(r.t>=1) returnFx.splice(i,1);
+  }
+  // 吃下:原地"被捏了一下"的可爱弹(不是重力乒乓)→星光一闪→消失(mamo 定)
+  if(eatFx){
+    // 绝对时钟:rAF 打盹(后台/截图)恢复后直接跳到正确阶段,不会卡在半路(观测环境实锤过)
+    const n=eatFx.node, b=eatFx.base, t2=(performance.now()-eatFx.t0)/1000;
+    if(t2<.85){
+      const w=Math.sin(t2/.85*Math.PI*2.5);
+      const sq=1-.14*Math.max(0,w);                 // 变形很小,主动 Q 弹
+      n.scale.set(b.x*(2-sq)*.5+b.x*.5, b.y*sq, b.z*(2-sq)*.5+b.z*.5);
+      n.position.y+=Math.max(0,-w)*dt*2.2;
+    } else if(!eatFx.popped){
+      eatFx.popped=true;
+      const wp=new T.Vector3(); n.getWorldPosition(wp); popSparks(wp);
+    } else {
+      const k=Math.min(1,(t2-.85)/.3);
+      n.scale.setScalar(Math.max(.001,b.x*(1+.25*k-1.25*k*k)));
+      if(k>=1){ const d=n.userData; takeOut(n); eatFx=null; revealEat(d); }
+    }
+  }
+  // 递给他:糖往斜上飞出画面
+  if(handFx){
+    const n=handFx.node, k=Math.min(1,(performance.now()-handFx.t0)/600);
+    n.position.x=handFx.from.x+k*k*6; n.position.y=handFx.from.y+k*5+k*k*4;
+    n.rotation.z-=dt*4;
+    n.scale.multiplyScalar(1-dt*1.1);
+    if(k>=1){ const cat=handFx.cat, m=handFx.msg; takeOut(n); handFx=null; revealHand(cat,m); }
+  }
+  // 星光粒子
+  for(let i=sparks.length-1;i>=0;i--){
+    const sp=sparks[i]; sp.userData.life+=dt;
+    sp.position.addScaledVector(sp.userData.v,dt);
+    sp.userData.v.y-=dt*2.2;
+    sp.material.opacity=Math.max(0,.9-sp.userData.life*1.7);
+    if(sp.userData.life>.6){ scene.remove(sp); sp.material.dispose(); sparks.splice(i,1); }
+  }
+  if(!controls.autoRotate && perfNow()-lastTouch>6) controls.autoRotate=true;
+  controls.update();
+  renderer.render(scene,camera);
+}
+
+fillJar();
+// 顶部数字仍报真实库存(样罐装的是 38 颗演示混装,和库存解耦)
+// 调色实时看(mamo 点名):调色间改参数→storage 事件跨页签广播;切回本页也对一次账
+let labSig=(localStorage.getItem('candylab_schemes_v1')||'')+(localStorage.getItem('candylab_mm_hex_v1')||'');
+function labSync(){
+  const sig=(localStorage.getItem('candylab_schemes_v1')||'')+(localStorage.getItem('candylab_mm_hex_v1')||'')+(localStorage.getItem('candylab_mm_jars_v1')||'');
+  if(sig===labSig) return; labSig=sig;
+  SCHEMES=loadSchemes(); MM_HEXES=loadMM(); MM_JARS=loadMMJars(); fillJar();
+}
+window.addEventListener('storage',labSync);
+window.addEventListener('pageshow',labSync);
+document.addEventListener('visibilitychange',()=>{ if(!document.hidden) labSync(); });
+// 通道二:调色间的即时广播(同源跨页签,零延迟)
+try{ const bc=new BroadcastChannel('candylab');
+  bc.onmessage=e=>{ if(e.data&&e.data.s) applyLab(e.data); };
+}catch(e){}
+// 通道三:「投罐预览」带参链接(穿透 PWA/浏览器存储隔离的快递员)
+function applyLab(payload){
+  SCHEMES=payload.s.map(sv=>toGrad(JSON.parse(JSON.stringify(sv))));
+  MM_HEXES=MM_BASE.slice();
+  if(payload.mj){ MM_JARS=JSON.parse(JSON.stringify(MM_JAR_DEF));
+    for(const k in payload.mj) MM_JARS[k]=Array.isArray(payload.mj[k])?payload.mj[k]:[payload.mj[k]];
+    try{ localStorage.setItem('candylab_mm_jars_v1',JSON.stringify(payload.mj)); }catch(e){} }
+  try{ localStorage.setItem('candylab_schemes_v1',JSON.stringify(payload.s));
+    if(payload.m) localStorage.setItem('candylab_mm_hex_v1',payload.m); }catch(e){}
+  fillJar();
+}
+function hashLab(){
+  if(!location.hash.startsWith('#lab=')) return;
+  try{
+    const payload=JSON.parse(decodeURIComponent(location.hash.slice(5)));
+    // 时间戳挡回旋镖:留在地址栏里的旧参数,刷新时会反过来盖掉新调色(mamo 2026-08-29 丢过一次)
+    const last=+(localStorage.getItem('candylab_lab_ts')||0);
+    if(!payload.ts || payload.ts>last){
+      applyLab(payload);
+      if(payload.ts) try{ localStorage.setItem('candylab_lab_ts',String(payload.ts)); }catch(e){}
+    }
+  }catch(e){}
+  history.replaceState(null,'',location.pathname);   // 收完就撕掉链接参数,刷新不再重放
+}
+window.addEventListener('hashchange',hashLab);
+hashLab();
+</script><div id="demoBar">试玩版 · 存档只在这台设备的浏览器里，没有 AI 那一头。
+<a href="https://github.com/mamo0521/causality-candy-jar">拿完整版 →</a></div>
+<style>#demoBar{position:fixed;left:0;right:0;bottom:0;z-index:99;padding:7px 12px;
+  background:rgba(59,42,24,.86);color:#f7ead7;font:11.5px/1.5 var(--f-cn),sans-serif;
+  letter-spacing:.5px;text-align:center;backdrop-filter:blur(6px)}
+#demoBar a{color:#edc783;text-decoration:none;border-bottom:.5px solid currentColor;margin-left:6px}
+@media (max-width:420px){#demoBar{font-size:11px}}</style>
+</body></html>
