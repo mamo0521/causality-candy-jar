@@ -198,7 +198,7 @@ def _find(cid):
     return None
 
 
-LINGER_GRACE_MIN = 120   # 保底 3 轮只在到期后这么多分钟内有效（mamo 2026-09-05：60 太短，好多糖本身就 40 分钟）；再久就是隔夜，直接清
+LINGER_GRACE_MIN = 90    # 到点之后还能撑多久（mamo 2026-09-05：先 60→120，再收到 90）
 
 
 def _prune(st):
@@ -214,7 +214,12 @@ def _prune(st):
         except Exception:
             gone.append(a); continue
         within_grace = (now - exp) <= timedelta(minutes=LINGER_GRACE_MIN)
-        if exp > now or (a.get("min_turns_left", 0) > 0 and within_grace):
+        if exp > now:
+            keep.append(a)
+        elif a.get("min_turns_left", 0) > 0 and within_grace:
+            # 到点之后**只再演一轮**（mamo 2026-09-05）：她在罐子页吃完隔了近两小时才开口，
+            # 大人一上来还在演手机。压成 1，_tick_turns 这一轮扣完就退，不会连演三轮。
+            a["min_turns_left"] = 1
             keep.append(a)
         else:
             gone.append(a)
@@ -257,10 +262,11 @@ def status(who=None):
         c = _find(a["candy_id"])
         if not c:
             continue
-        left = max(0, int((datetime.fromisoformat(a["expires"]) - now).total_seconds() // 60))
+        exp = datetime.fromisoformat(a["expires"])
+        left = max(0, int((exp - now).total_seconds() // 60))
         out.append({"target": a["target"], "name": _fullname(c), "effect": c["effect"],
                     "reveal": c["reveal"], "perform": c["perform"],
-                    "minutes_left": left, "from": a.get("from")})
+                    "minutes_left": left, "linger": exp <= now, "from": a.get("from")})
     return out
 
 
@@ -387,7 +393,8 @@ def context_line():
         return ""
     for a in act:
         who = "你" if a["target"] == "ai" else "Ta"
-        left = f"还剩约 {a['minutes_left']} 分钟" if a["minutes_left"] else "余韵未散,再撑一会儿"
+        left = (f"还剩约 {a['minutes_left']} 分钟" if a["minutes_left"]
+                else "时间已经到点,这是最后一轮:把余韵演完就收")
         parts.append(f"{who}正在「{a['name']}」药效中（{left}）：{_end_dot(a['reveal'])}"
                      + (f"\n演法：{a['perform']}" if a["target"] == "ai" else ""))
     return "【因果律软糖罐】\n" + "\n".join(parts)

@@ -331,6 +331,8 @@
   .tnum i{display:inline-block;font-style:normal}
   .tnum i.d{width:.6em;text-align:center}
   #fxchips button .num.long{width:56px}   /* 两档固定宽,不随内容自适应(mamo):短 42 / 长 56 */
+  /* 余韵态：时间到点、只剩最后一轮时牌子不撤，数字位换成「余韵」（mamo 2026-09-05） */
+  #fxchips button .num.linger{font:400 12px/1.5 var(--f-cn);letter-spacing:1px;color:#8a7358}
   #fxchips button{white-space:nowrap}
   body.showcase #fxchips button:first-child{transform:translateY(-24px) rotate(1.5deg);transition-delay:.12s}
   body.showcase #fxchips button:last-child{transform:translateY(-34px) rotate(-1deg);transition-delay:.17s}
@@ -715,6 +717,7 @@
   #fxdtCard .clock b{font:400 9px/1 var(--f-cn);letter-spacing:2px;color:var(--c-ink);
     padding-bottom:2px;font-weight:400}
   #fxdtCard .clock span{font:600 24px/1 var(--f-en);color:var(--c-ink);padding-bottom:5px}
+  #fxdtCard .clock span.linger{font:400 17px/1 var(--f-cn);letter-spacing:3px}
   /* 标签行：玩家=橘底「你的」／AI=蓝底「Ta的」，两套（mamo 08-31） */
   #fxdtCard .tags{display:flex;align-items:center;gap:0;margin-top:9px;align-self:flex-start}
   /* 字距与揭晓卡的标签**完全一致**（mamo：就照揭晓卡那套走） */
@@ -1329,10 +1332,10 @@ fetch('/assets/candyjar/candies.json?v='+Date.now()).then(r=>r.json()).then(d=>{
 function applyServerEffects(list){
   const arr=list||[];
   const pick=t=>{
-    const a=arr.filter(x=>x.target===t&&x.minutes_left>0)[0];   // 0 分钟=只剩对话轮保底,UI 不挂
+    const a=arr.filter(x=>x.target===t&&(x.minutes_left>0||x.linger))[0];   // linger=到点了但还剩最后一轮,牌子照挂
     if(!a) return null;
     const cat=CATALOG&&CATALOG.candies.find(c=>c.effect===a.effect);
-    return cat?{cat, until:Date.now()+a.minutes_left*60000}:null;
+    return cat?{cat, until:Date.now()+a.minutes_left*60000, linger:!!a.linger}:null;
   };
   fxMe=pick('user');
   fxTa=pick('ai');
@@ -1919,9 +1922,9 @@ function fxTick(){
     if(!el) continue;   // 元素不在就跳过:这里每秒跑一次,一旦抛错会把后面的初始化全带塌
     if(!fx){ el.style.display='none'; continue; }
     const left=fx.until-Date.now();
-    if(left<=0){ if(id==='fxchipMe') fxMe=null; else fxTa=null; el.style.display='none'; continue; }
+    if(left<=0&&!fx.linger){ if(id==='fxchipMe') fxMe=null; else fxTa=null; el.style.display='none'; continue; }
     el.style.display='';
-    const txt=fxFmt(left);
+    const txt=fx.linger?'余韵':fxFmt(left);   // 到点了只剩最后一轮:显示余韵,别显示 0:00
     if(el.dataset.t!==txt){   // 只换文本：不再播上下跳的动画（mamo：数字位置要一直固定）
       el.dataset.t=txt;
       if(!el.dataset.built){
@@ -1932,9 +1935,9 @@ function fxTick(){
       el.classList.toggle('ta',label==='Ta');
       const nEl=el.querySelector('.num');
       const isLong=txt.split(':').length>2;   // h:mm:ss 才用长格
-      nEl.className='num tnum'+(isLong?' long':'');
+      nEl.className='num'+(fx.linger?' linger':' tnum')+(isLong?' long':'');
       el.classList.toggle('wide',isLong);
-      nEl.innerHTML=tnumHTML(txt);
+      if(fx.linger) nEl.textContent=txt; else nEl.innerHTML=tnumHTML(txt);
     }
   }
 }
@@ -1957,9 +1960,11 @@ function fxdtSync(){
   if(!fxdtCur) return;
   const box=document.getElementById('fxdt');
   if(!box.classList.contains('show')) return;
+  const te=document.getElementById('fxdtTime');
+  if(fxdtCur.linger){ te.className='linger'; te.textContent='余韵'; return; }
   const left=fxdtCur.until-Date.now();
   if(left<=0){ box.classList.remove('show'); fxdtCur=null; return; }
-  const te=document.getElementById('fxdtTime'); te.className='tnum'; te.innerHTML=tnumHTML(fxFmt(left));
+  te.className='tnum'; te.innerHTML=tnumHTML(fxFmt(left));
 }
 document.getElementById('fxdtOk').onclick=()=>{
   document.getElementById('fxdt').classList.remove('show'); fxdtCur=null;
