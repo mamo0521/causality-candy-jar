@@ -22,11 +22,10 @@ sys.path.insert(0, str(ROOT))
 import candyjar  # noqa: E402
 
 HOST, PORT = "127.0.0.1", 8765
+PORT_TRIES = 12          # 端口被占就往后挪：装死会让玩家在别人的罐子上玩（2026-09-05 实锤，见 serve()）
 # 同一份存档有两头在写：网页（你）和 MCP（AI）。同进程里用一把锁把「读—改—写」串起来。
 # mcp_server 起来时会把自己的锁赋到这里，保证两头用的是同一把。
 LOCK = threading.RLock()
-if len(sys.argv) > 1:
-    PORT = int(sys.argv[1])
 
 
 class Handler(SimpleHTTPRequestHandler):
@@ -123,11 +122,30 @@ class Handler(SimpleHTTPRequestHandler):
             return self._json({"error": f"{type(e).__name__}: {e}"}, 500)
         self.send_error(HTTPStatus.NOT_FOUND)
 
-if __name__ == "__main__":
+def serve(port=None):
+    """占一个能用的端口把网页端出去，返回 (httpd, 真实端口)。
+
+    端口被占时**一定要换一个**：曾经出过事——另一个程序占着 8765，这边静悄悄放弃，
+    玩家在浏览器里看到的是别人的罐子，AI 读的却是自己那本空账，两边对不上（2026-09-05）。
+    """
     (ROOT / "data").mkdir(exist_ok=True)
-    print(f"🍬 因果律软糖罐已开张：http://{HOST}:{PORT}   （Ctrl+C 关店）")
-    print(f"   给 AI 的药效状态：http://{HOST}:{PORT}/candyjar/context")
+    first = PORT if port is None else int(port)
+    last = None
+    for p in range(first, first + PORT_TRIES):
+        try:
+            return ThreadingHTTPServer((HOST, p), Handler), p
+        except OSError as e:
+            last = e
+    raise OSError(f"{first}~{first + PORT_TRIES - 1} 全被占了：{last}")
+
+
+if __name__ == "__main__":
+    httpd, port = serve(sys.argv[1] if len(sys.argv) > 1 else None)
+    if port != PORT:
+        print(f"（{PORT} 被别的程序占着，改用 {port}）")
+    print(f"🍬 因果律软糖罐已开张：http://{HOST}:{port}   （Ctrl+C 关店）")
+    print(f"   给 AI 的药效状态：http://{HOST}:{port}/candyjar/context")
     try:
-        ThreadingHTTPServer((HOST, PORT), Handler).serve_forever()
+        httpd.serve_forever()
     except KeyboardInterrupt:
         print("\n打烊。")

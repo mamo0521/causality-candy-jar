@@ -21,7 +21,8 @@ import candyjar  # noqa: E402
 PROTOCOL = "2025-06-18"
 SUPPORTED = {"2025-06-18", "2025-03-26", "2024-11-05"}
 NAME, VERSION = "causality-candy-jar", "1.0.0"
-LOCK = threading.Lock()          # 网页那头和 AI 这头在同一个进程里，读改写要排队
+LOCK = threading.RLock()         # 网页那头和 AI 这头在同一个进程里，读改写要排队
+WEB_URL = None                   # 网页界面真正开在哪（端口可能被占而后挪），工具回执里要告诉玩家
 
 TOOLS = [
     {"name": "candy_jar",
@@ -64,6 +65,13 @@ def run_tool(name, args):
         return candyjar.look(who="ai")
 
 
+def with_url(text):
+    """还没开罐时把开罐地址补上——玩家未必知道网页开在哪个端口。"""
+    if WEB_URL and "还没开" in text:
+        return f"{text}\n（Ta 的开罐界面：{WEB_URL}）"
+    return text
+
+
 def reply(msg):
     sys.stdout.write(json.dumps(msg, ensure_ascii=False) + "\n")
     sys.stdout.flush()
@@ -89,7 +97,7 @@ def handle(req):
     if method == "tools/call":
         nm = params.get("name")
         try:
-            text = run_tool(nm, params.get("arguments"))
+            text = with_url(run_tool(nm, params.get("arguments")))
             err = False
         except Exception as e:                      # 工具出错要作为结果回，别把连接搞断
             text, err = f"糖罐出岔子了：{type(e).__name__}: {e}", True
@@ -102,12 +110,16 @@ def handle(req):
 
 
 def serve_web():
-    """顺带把网页界面开起来（端口被占就安静让开：玩家可能已经手动开着一个）。"""
+    """顺带把网页界面开起来。端口被占就往后挪——静悄悄放弃会让玩家在别人的罐子上玩，
+    而 AI 读的是自己这本空账，两边永远对不上（2026-09-05 实锤）。"""
+    global WEB_URL
     try:
         import server
-        from http.server import ThreadingHTTPServer
         server.LOCK = LOCK                      # 和 MCP 这头共用一把锁
-        ThreadingHTTPServer((server.HOST, server.PORT), server.Handler).serve_forever()
+        httpd, port = server.serve()
+        WEB_URL = f"http://{server.HOST}:{port}"
+        print(f"[candyjar] 网页界面 {WEB_URL}", file=sys.stderr)
+        httpd.serve_forever()
     except Exception as e:
         print(f"[candyjar] 网页界面没开起来：{e}", file=sys.stderr)
 
@@ -115,7 +127,7 @@ def serve_web():
 def main():
     os.makedirs(os.path.join(os.path.dirname(os.path.abspath(__file__)), "data"), exist_ok=True)
     threading.Thread(target=serve_web, daemon=True).start()
-    print(f"[candyjar] 罐子已就位；网页界面 http://127.0.0.1:8765", file=sys.stderr)
+    print("[candyjar] 罐子已就位。", file=sys.stderr)
     for line in sys.stdin:
         line = line.strip()
         if not line:
