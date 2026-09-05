@@ -142,7 +142,8 @@ def _ensure_jar(st):
     return st["jar"]
 
 
-NOT_OPENED = "今天的罐子 Ta 还没开——开罐权在 Ta 手里，等 Ta 选好再来。"
+NOT_OPENED = ("今天的罐子 Ta 还没开——开罐权在 Ta 手里。"
+              "告诉 Ta：浏览器打开 http://127.0.0.1:8765 就能开罐。")
 
 
 def options(st):
