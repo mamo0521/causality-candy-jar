@@ -159,6 +159,9 @@ def serve_web():
         server.LOCK = LOCK                      # 和 MCP 这头共用一把锁
         httpd, port = server.serve()
         WEB_URL = f"http://{server.HOST}:{port}"
+        if httpd is None:   # 那个端口上已经有一罐（同一本账）：直接用它的页面，这边不开第二个门
+            print(f"[candyjar] 网页界面已由另一份开着：{WEB_URL}", file=sys.stderr)
+            return
         print(f"[candyjar] 网页界面 {WEB_URL}", file=sys.stderr)
         httpd.serve_forever()
     except Exception as e:
@@ -166,7 +169,6 @@ def serve_web():
 
 
 def main():
-    os.makedirs(os.path.join(os.path.dirname(os.path.abspath(__file__)), "data"), exist_ok=True)
     threading.Thread(target=serve_web, daemon=True).start()
     print("[candyjar] 罐子已就位。", file=sys.stderr)
     for line in sys.stdin:

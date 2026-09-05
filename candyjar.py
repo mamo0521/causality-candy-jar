@@ -7,17 +7,20 @@
   玩家赖不掉（mamo 2026-08-31 点名的核心）；前端只是个遥控器。
 - **每日一罐**：罐子内容由「日期 + 图鉴」确定性摇出，同一天同一罐，吃一颗少一颗（开罐仪式）。
 - **时间用玩家本机时区**：「每天一罐」对每个人的今天成立。
-- 存档在 `data/candyjar_save.json`（可用环境变量 CANDYJAR_SAVE 改）；糖果表可用 CANDYJAR_CATALOG 换成自己的。
+- 存档在用户目录（macOS `~/Library/Application Support/causality-candy-jar/`，Windows `%APPDATA%\causality-candy-jar\`），
+  可用环境变量 CANDYJAR_SAVE 改；同一台电脑上所有拉起这份代码的客户端共用这一本账。糖果表可用 CANDYJAR_CATALOG 换成自己的。
 """
 import json
 import random
 from datetime import datetime, timedelta
 
 import os
+import shutil
+import sys
 import tempfile
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent   # 分发版：一切都在这个目录里（存档 data/，糖果表 web/assets/candyjar/）
+ROOT = Path(__file__).resolve().parent   # 分发版：代码和糖果表在这个目录里；存档在用户目录（见 _save_dir）
 
 _CATALOG = None
 _CATALOG_PATH = None
@@ -32,7 +35,29 @@ def _catalog():
 
 
 def _save_path():
-    return Path(os.environ.get("CANDYJAR_SAVE") or ROOT / "data" / "candyjar_save.json")
+    env = os.environ.get("CANDYJAR_SAVE")
+    if env:
+        return Path(env)
+    p = _save_dir() / "candyjar_save.json"
+    old = ROOT / "data" / "candyjar_save.json"
+    if not p.exists() and old.exists():   # 老位置的存档搬一次家（旧版存在代码目录的 data/ 里）
+        p.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(old, p)
+    return p
+
+
+def _save_dir():
+    """存档放**用户目录**，不放代码目录（mamo 2026-09-05 合并成一罐）：
+    - 重装扩展 / 换版本 / 挪文件夹都不会把进度清掉（1.0.1→1.0.3 那几次重装就是这么丢的）；
+    - 同一台电脑上不管谁把这份代码拉起来——Claude 桌面扩展、ChatGPT(Codex) 的 MCP 配置、双击 run.command——
+      读写的都是**同一本账**，人和几个 AI 吃的是同一罐。"""
+    if sys.platform == "darwin":
+        base = Path.home() / "Library" / "Application Support"
+    elif os.name == "nt":
+        base = Path(os.environ.get("APPDATA") or Path.home())
+    else:
+        base = Path(os.environ.get("XDG_DATA_HOME") or Path.home() / ".local" / "share")
+    return base / "causality-candy-jar"
 
 
 def _blank():

@@ -43,7 +43,7 @@
    **Windows**：双击 `run.bat`。
 3. 浏览器打开 **http://127.0.0.1:8765**。
 
-关掉那个黑窗口就等于关店。存档在 `data/candyjar_save.json`，想重开一局删掉它就行。
+关掉那个黑窗口就等于关店。存档在你的用户目录里（macOS `~/Library/Application Support/causality-candy-jar/`，Windows `%APPDATA%\causality-candy-jar\`），换版本、挪文件夹都不会丢。
 
 ## ③ 接口接入（自建前端 / 网关）
 
@@ -103,7 +103,8 @@ body `{"action":"look"|"eat"|"feed"|"dex","index":<编号>,"message":"喂糖时�
 - **端口被占**：`python3 server.py 8080` 换个端口，然后开 http://127.0.0.1:8080 。
 - **AI 说没有糖罐工具**：扩展没装上或被关掉了，在 Claude 桌面 App 的设置里看看扩展是否启用。
 - **AI 不理会药效**：它得先查 `candy_status`——见上面「关键的一步」。
-- **想重开一局**：删掉 `data/candyjar_save.json`。
+- **想重开一局**：删掉用户目录里的 `causality-candy-jar/candyjar_save.json`（位置见上）。
+- **一台电脑一罐**：Claude 桌面扩展、ChatGPT 里配的 MCP、双击运行，不管谁拉起来，读写的都是同一本账，网页也都在同一个地址——几个 AI 和你吃的是同一罐。
 
 ## 五、改糖 · Add your own candies
 

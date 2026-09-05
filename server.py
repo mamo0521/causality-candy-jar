@@ -122,13 +122,25 @@ class Handler(SimpleHTTPRequestHandler):
             return self._json({"error": f"{type(e).__name__}: {e}"}, 500)
         self.send_error(HTTPStatus.NOT_FOUND)
 
-def serve(port=None):
-    """占一个能用的端口把网页端出去，返回 (httpd, 真实端口)。
+def jar_already_at(port):
+    """这个端口上是不是已经有一罐我们自己的糖罐在开着（回得出 /candyjar/status 的 JSON 列表）。"""
+    try:
+        import urllib.request
+        with urllib.request.urlopen(f"http://{HOST}:{port}/candyjar/status", timeout=0.6) as r:
+            return r.status == 200 and isinstance(json.loads(r.read().decode("utf-8")), list)
+    except Exception:
+        return False
 
-    端口被占时**一定要换一个**：曾经出过事——另一个程序占着 8765，这边静悄悄放弃，
-    玩家在浏览器里看到的是别人的罐子，AI 读的却是自己那本空账，两边对不上（2026-09-05）。
+
+def serve(port=None):
+    """占一个能用的端口把网页端出去，返回 (httpd, 真实端口)；
+    **返回 (None, 端口) 表示那个端口上已经有一罐在开着，直接用它、别再开第二个门**。
+
+    存档在用户目录、一台电脑只有一本账（2026-09-05 合并）之后，同一台电脑上不管谁拉起第二份
+    （Claude 扩展 + ChatGPT 的 MCP 各起一份、或者同一个客户端开了几个会话），网页都该是同一个地址——
+    之前每份各占一个端口，8765 / 8770 两个页面看着像两罐，mamo 以为 AI 吃错了药。
+    端口被**别的程序**占着时仍然要换一个：装死会让玩家在别人的页面上玩、AI 读自己那本账（更早的事故）。
     """
-    (ROOT / "data").mkdir(exist_ok=True)
     first = PORT if port is None else int(port)
     last = None
     for p in range(first, first + PORT_TRIES):
@@ -136,11 +148,16 @@ def serve(port=None):
             return ThreadingHTTPServer((HOST, p), Handler), p
         except OSError as e:
             last = e
+            if jar_already_at(p):
+                return None, p
     raise OSError(f"{first}~{first + PORT_TRIES - 1} 全被占了：{last}")
 
 
 if __name__ == "__main__":
     httpd, port = serve(sys.argv[1] if len(sys.argv) > 1 else None)
+    if httpd is None:
+        print(f"🍬 糖罐已经在 http://{HOST}:{port} 开着了（同一本账），这边不再开第二个门。")
+        sys.exit(0)
     if port != PORT:
         print(f"（{PORT} 被别的程序占着，改用 {port}）")
     print(f"🍬 因果律软糖罐已开张：http://{HOST}:{port}   （Ctrl+C 关店）")
