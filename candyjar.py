@@ -198,14 +198,10 @@ def _find(cid):
     return None
 
 
-LINGER_GRACE_MIN = 90    # 到点之后还能撑多久（mamo 2026-09-05：先 60→120，再收到 90）
-
-
 def _prune(st):
     """清掉过期药效；返回被清掉的条目（供调用方播报"药效退了"）。
-    保底 3 轮（note-20）是为了"聊得慢、药效还没演够就退了"——它按对话轮数递减，
-    没人说话它就永远不减。2026-09-05 mamo 报：前天 15:28 喂的老中医（22 分钟），
-    隔了 40 小时的早安主动消息里大人还在演老中医。所以保底只在到期后 LINGER_GRACE_MIN 内算数。"""
+    **到点就是到点**（mamo 2026-09-05 拍板，删掉了原来的保底轮数与宽限窗口）：
+    忘了喂糖就再吃一颗，比让一颗过期的糖多演几轮干净。"""
     now = _now_dt()
     keep, gone = [], []
     for a in st.get("active", []):
@@ -213,13 +209,7 @@ def _prune(st):
             exp = datetime.fromisoformat(a["expires"])
         except Exception:
             gone.append(a); continue
-        within_grace = (now - exp) <= timedelta(minutes=LINGER_GRACE_MIN)
         if exp > now:
-            keep.append(a)
-        elif a.get("min_turns_left", 0) > 0 and within_grace:
-            # 到点之后**只再演一轮**（mamo 2026-09-05）：她在罐子页吃完隔了近两小时才开口，
-            # 大人一上来还在演手机。压成 1，_tick_turns 这一轮扣完就退，不会连演三轮。
-            a["min_turns_left"] = 1
             keep.append(a)
         else:
             gone.append(a)
@@ -262,11 +252,10 @@ def status(who=None):
         c = _find(a["candy_id"])
         if not c:
             continue
-        exp = datetime.fromisoformat(a["expires"])
-        left = max(0, int((exp - now).total_seconds() // 60))
+        left = max(0, int((datetime.fromisoformat(a["expires"]) - now).total_seconds() // 60))
         out.append({"target": a["target"], "name": _fullname(c), "effect": c["effect"],
                     "reveal": c["reveal"], "perform": c["perform"],
-                    "minutes_left": left, "linger": exp <= now, "from": a.get("from")})
+                    "minutes_left": left, "from": a.get("from")})
     return out
 
 
@@ -355,28 +344,9 @@ def buy(candy_id, dest="reserve", price=None, who="user"):
             "jar": jar, "mystery_price": mystery_price(st), "once_used": once_used(st, who)}
 
 
-def _tick_turns():
-    """保底 3 轮（note-20）：到期的药效再撑 min_turns_left 轮才让 _prune 清掉。
-    **只在这里递减**——它对应"组装了一轮对话"；status() 被 /state 轮询每几秒调一次,在那里数就乱了。"""
-    st = _load()
-    now = _now_dt()
-    changed = False
-    for a in st.get("active", []):
-        try:
-            expired = datetime.fromisoformat(a["expires"]) <= now
-        except Exception:
-            expired = True
-        if expired and a.get("min_turns_left", 0) > 0:
-            a["min_turns_left"] -= 1
-            changed = True
-    if changed:
-        _write(st)
-
-
 def context_line():
     """给 assembler 的一行注入文本；无药效时返回空串（不占上下文）。"""
-    act = status()      # 先按当前计数注入……
-    _tick_turns()       # ……再把这一轮记掉。反过来会少撑一轮（3 变 2）
+    act = status()
     st = _load()
     faded = st.get("faded") or []
     if faded:            # 只播报一次：读完就清
@@ -393,8 +363,7 @@ def context_line():
         return ""
     for a in act:
         who = "你" if a["target"] == "ai" else "Ta"
-        left = (f"还剩约 {a['minutes_left']} 分钟" if a["minutes_left"]
-                else "时间已经到点,这是最后一轮:把余韵演完就收")
+        left = f"还剩约 {a['minutes_left']} 分钟" if a["minutes_left"] else "还剩不到 1 分钟"
         parts.append(f"{who}正在「{a['name']}」药效中（{left}）：{_end_dot(a['reveal'])}"
                      + (f"\n演法：{a['perform']}" if a["target"] == "ai" else ""))
     return "【因果律软糖罐】\n" + "\n".join(parts)
@@ -459,8 +428,7 @@ def _apply(st, cid, target, frm=None):
         st["active"] = [a for a in st["active"] if a["target"] != target]   # 新顶旧
         st["active"].append({"target": target, "candy_id": cid, "from": frm,
                              "started": _now(),
-                             "expires": (_now_dt() + timedelta(minutes=mins)).isoformat(),
-                             "min_turns_left": 3})
+                             "expires": (_now_dt() + timedelta(minutes=mins)).isoformat()})
     st["dex"][cid] = st["dex"].get(cid, 0) + 1
     st["log"].append({"t": _now(), "candy": cid, "target": target, "from": frm, "mins": mins})
     st["log"] = st["log"][-200:]
