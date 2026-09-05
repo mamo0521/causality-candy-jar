@@ -11,6 +11,7 @@
 """
 import json
 import sys
+import threading
 from http import HTTPStatus
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -21,6 +22,9 @@ sys.path.insert(0, str(ROOT))
 import candyjar  # noqa: E402
 
 HOST, PORT = "127.0.0.1", 8765
+# 同一份存档有两头在写：网页（你）和 MCP（AI）。同进程里用一把锁把「读—改—写」串起来。
+# mcp_server 起来时会把自己的锁赋到这里，保证两头用的是同一把。
+LOCK = threading.RLock()
 if len(sys.argv) > 1:
     PORT = int(sys.argv[1])
 
@@ -63,15 +67,20 @@ class Handler(SimpleHTTPRequestHandler):
     def do_GET(self):
         path = urlsplit(self.path).path
         if path == "/candyjar":                       # 罐子页开罐时拉一次（没开罐时 jar=None + choose 五罐候选）
-            return self._json(candyjar.view(who="user"))
+            with LOCK:
+                return self._json(candyjar.view(who="user"))
         if path == "/candyjar/context":               # 给 AI 的那段话（无药效时为空）
-            return self._text(candyjar.context_line())
+            with LOCK:
+                return self._text(candyjar.context_line())
         if path == "/candyjar/status":                # 结构化药效快照
-            return self._json(candyjar.status())
+            with LOCK:
+                return self._json(candyjar.status())
         if path == "/candyjar/look":                  # AI 看罐子（文本）
-            return self._text(candyjar.look(who="ai"))
+            with LOCK:
+                return self._text(candyjar.look(who="ai"))
         if path == "/candyjar/dex":
-            return self._text(candyjar.dex())
+            with LOCK:
+                return self._text(candyjar.dex())
         if path == "/state":                          # 罐子页旧的余额显示，这里没有存钱罐
             return self._json({})
         if path == "/":
@@ -81,38 +90,38 @@ class Handler(SimpleHTTPRequestHandler):
     def do_POST(self):
         path = urlsplit(self.path).path
         try:
-            if path == "/candyjar/eat":               # 玩家在界面上吃/喂
-                b = self._body()
-                target = "ai" if b.get("feed") else "user"
-                text = candyjar.eat(index=b.get("index"), who="user", target=target,
-                                    message=(b.get("message") or None),
-                                    source=(b.get("source") or "jar"), candy_id=b.get("candy_id"))
-                st = candyjar._load()
-                return self._json({"ok": True, "text": text, "active": candyjar.status(),
-                                   "courage": st.get("courage", {}), "reserve": st.get("reserve", []),
-                                   "dex": st.get("dex", {})})
-            if path == "/candyjar/choose":            # 每天第一次打开：从五罐里选一罐
-                r = candyjar.choose(self._body().get("jar"), who="user")
-                return self._json(r, 400 if r.get("error") else 200)
-            if path == "/candyjar/buy":
-                b = self._body()
-                r = candyjar.buy(candy_id=b.get("id"), dest=(b.get("dest") or "reserve"), who="user")
-                return self._json(r, 400 if r.get("error") else 200)
-            if path == "/candyjar/ai":                # 走 API 的玩家给 AI 装工具时调这个
-                b = self._body()
-                act = b.get("action") or "look"
-                if act == "eat":
-                    return self._text(candyjar.eat(index=b.get("index"), who="ai"))
-                if act == "feed":
-                    return self._text(candyjar.eat(index=b.get("index"), who="ai", target="user",
-                                                   message=b.get("message")))
-                if act == "dex":
-                    return self._text(candyjar.dex())
-                return self._text(candyjar.look(who="ai"))
+            with LOCK:                                # 读—改—写整段独占：AI 那头可能同时在吃糖
+                if path == "/candyjar/eat":           # 玩家在界面上吃/喂
+                    b = self._body()
+                    target = "ai" if b.get("feed") else "user"
+                    text = candyjar.eat(index=b.get("index"), who="user", target=target,
+                                        message=(b.get("message") or None),
+                                        source=(b.get("source") or "jar"), candy_id=b.get("candy_id"))
+                    st = candyjar._load()
+                    return self._json({"ok": True, "text": text, "active": candyjar.status(),
+                                       "courage": st.get("courage", {}),
+                                       "reserve": candyjar._reserve(st, "user"), "dex": st.get("dex", {})})
+                if path == "/candyjar/choose":        # 每天第一次打开：从五罐里选一罐
+                    r = candyjar.choose(self._body().get("jar"), who="user")
+                    return self._json(r, 400 if r.get("error") else 200)
+                if path == "/candyjar/buy":
+                    b = self._body()
+                    r = candyjar.buy(candy_id=b.get("id"), dest=(b.get("dest") or "reserve"), who="user")
+                    return self._json(r, 400 if r.get("error") else 200)
+                if path == "/candyjar/ai":            # 走 API 的玩家给 AI 装工具时调这个
+                    b = self._body()
+                    act = b.get("action") or "look"
+                    if act == "eat":
+                        return self._text(candyjar.eat(index=b.get("index"), who="ai"))
+                    if act == "feed":
+                        return self._text(candyjar.eat(index=b.get("index"), who="ai", target="user",
+                                                       message=b.get("message")))
+                    if act == "dex":
+                        return self._text(candyjar.dex())
+                    return self._text(candyjar.look(who="ai"))
         except Exception as e:                        # 任何异常都回一句话，别让页面转圈
             return self._json({"error": f"{type(e).__name__}: {e}"}, 500)
         self.send_error(HTTPStatus.NOT_FOUND)
-
 
 if __name__ == "__main__":
     (ROOT / "data").mkdir(exist_ok=True)

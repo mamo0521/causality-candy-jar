@@ -23,6 +23,15 @@ macOS 可以直接双击 `run.command`，Windows 双击 `run.bat`。
 
 存档在 `data/candyjar_save.json`，想重开一局删掉它就行。
 
+## 用 Claude 桌面 App 玩（一键装）· Claude Desktop one-click
+
+到 [Releases](https://github.com/mamo0521/causality-candy-jar/releases) 下载 `causality-candy-jar-*.mcpb`，
+**在 Claude 桌面 App 里打开它**（双击即可），会弹出安装确认。装完 AI 那边就有了 `candy_jar` 工具，
+它可以自己吃糖、也可以喂给你；浏览器打开 **http://127.0.0.1:8765** 就是你这边的界面，两边同一本账。
+（同样需要电脑上有 Python 3.9 以上。不想要安装包的话，往下走源码那条路，效果一样。）
+
+Download the `.mcpb` from Releases and open it with the Claude desktop app for one-click install.
+
 ## 把 AI 接进来 · Hook up your AI
 
 罐子把"谁在什么药效中、还剩几分钟、该怎么演"写成一段话，从这里拿：

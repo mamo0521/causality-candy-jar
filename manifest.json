@@ -1,0 +1,33 @@
+{
+  "manifest_version": "0.3",
+  "name": "causality-candy-jar",
+  "display_name": "因果律软糖罐 · Causality Candy Jar",
+  "version": "1.0.0",
+  "description": "一罐和你的 AI 一起玩的整蛊软糖：吃下去才知道是什么，药效有倒计时，谁吃了什么都记在账上。",
+  "long_description": "五个主题罐子按天开，一天一罐。你在网页界面里开罐、选糖、吃糖或喂给 AI；AI 这边有 candy_jar 工具，可以自己吃、也可以反过来喂你。药效带真实倒计时并写进账本，赖不掉。装上后浏览器打开 http://127.0.0.1:8765 就能玩。",
+  "author": { "name": "mamo" },
+  "license": "MIT",
+  "keywords": ["game", "roleplay", "companion", "candy"],
+  "icon": "icon.png",
+  "server": {
+    "type": "python",
+    "entry_point": "mcp_server.py",
+    "mcp_config": {
+      "command": "python3",
+      "args": ["${__dirname}/mcp_server.py"],
+      "env": { "CANDYJAR_SAVE": "${__dirname}/data/candyjar_save.json" },
+      "platform_overrides": {
+        "win32": { "command": "python", "args": ["${__dirname}/mcp_server.py"] }
+      }
+    }
+  },
+  "tools": [
+    { "name": "candy_jar", "description": "看罐子 / 自己吃一颗 / 喂给玩家 / 翻图鉴" },
+    { "name": "candy_status", "description": "查当前谁身上有什么药效、还剩几分钟" }
+  ],
+  "compatibility": {
+    "claude_desktop": ">=0.10.0",
+    "platforms": ["darwin", "win32", "linux"],
+    "runtimes": { "python": ">=3.9" }
+  }
+}
