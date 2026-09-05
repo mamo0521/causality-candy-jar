@@ -1798,7 +1798,9 @@ function takeOut(c){   // 从罐里注销这颗糖
 let pendingEatConfirm=false;
 function eatCandy(){   // 自己吃;药效未过先确认顶掉(mamo:要在吃之前提醒)
   if(!picked||eatFx) return;
-  const hardOverride=fxMe&&(fxMe.until-Date.now())>10*60000;   // 旧药效还剩 10 分钟以上才算硬顶(与后端 OVERRIDE_GRACE_MIN 同线)
+  // 机制糖(巧克力豆)一律没时长,吃它顶不掉任何东西——后端 _apply 对 jar==0 一律回 mins=0(护身符也是),
+  // 所以别弹顶旧确认(mamo 2026-09-05 报:吃勇气结晶被问"要顶掉古法酱香吗",而且实际也没顶掉)。
+  const hardOverride=fxMe&&picked.userData.kind!=='mm'&&(fxMe.until-Date.now())>10*60000;   // 旧药效还剩 10 分钟以上才算硬顶(与后端 OVERRIDE_GRACE_MIN 同线)
   if(hardOverride&&!pendingEatConfirm){
     pendingEatConfirm=true;
     const title=document.getElementById('cardTitle'); title.textContent='';
@@ -2049,7 +2051,7 @@ function revealEat(d){
   const cat=d.cat;
   consumePocket(cat);
   serverEat(cat,false,null);
-  const override=!!(fxMe&&(fxMe.until-Date.now())>10*60000);   // 同后端十分钟线
+  const override=!!(fxMe&&(!cat||cat.jar!==0)&&(fxMe.until-Date.now())>10*60000);   // 同后端十分钟线;机制糖不算顶旧
   if(override){ courage=Math.max(0,courage-2); updCourage(); }
   else { courage++; pendingBump=true; }   // 先记账不播动画,等揭晓卡关掉再播(被卡片挡住就白演了)
   if(cat){ dexCount[cat.id]=(dexCount[cat.id]||0)+1; saveDex(); startEffect(cat,'me'); }
