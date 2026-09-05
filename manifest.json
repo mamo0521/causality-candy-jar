@@ -2,7 +2,7 @@
   "manifest_version": "0.3",
   "name": "causality-candy-jar",
   "display_name": "因果律软糖罐 · Causality Candy Jar",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "一罐和你的 AI 一起玩的整蛊软糖：吃下去才知道是什么，药效有倒计时，谁吃了什么都记在账上。",
   "long_description": "五个主题罐子按天开，一天一罐。你在网页界面里开罐、选糖、吃糖或喂给 AI；AI 这边有 candy_jar 工具，可以自己吃、也可以反过来喂你。药效带真实倒计时并写进账本，赖不掉。装上后浏览器打开 http://127.0.0.1:8765 就能玩。",
   "author": { "name": "mamo" },

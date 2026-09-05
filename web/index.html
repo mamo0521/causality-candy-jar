@@ -1938,11 +1938,17 @@ function fxTick(){
     }
   }
 }
-let fxdtCur=null;   // 详情卡正在看的那份药效（开着时每秒刷新剩余时间）
+let fxdtCur=null, fxdtWho='';   // 详情卡正在看的那份药效（开着时每秒刷新剩余时间）
 function openFxDetail(fx,who){
-  fxdtCur=fx;
-  const cat=fx.cat;
   document.getElementById('fxdtCard').classList.remove('settled');
+  renderFxDetail(fx,who);
+  document.getElementById('fxdt').classList.add('show');
+}
+// 卡片内容单独一函数：药效被顶掉换新时原地重画,不重播进场动画
+// （mamo 2026-09-05 报"吃错药了"：卡片开着的时候他又吃了一颗,牌子换了、卡片还停在旧那颗）
+function renderFxDetail(fx,who){
+  fxdtCur=fx; fxdtWho=who;
+  const cat=fx.cat;
   document.getElementById('fxdtName').textContent='「'+fullName(cat)+'」';
   document.getElementById('fxdtTags').className='tags'+(who==='Ta'?' ta':'');
   document.getElementById('fxdtTags').querySelector('.who').textContent=(who==='Ta'?'Ta 的':'你 的');   // Ta 字距 0,靠这个空格分开
@@ -1951,12 +1957,15 @@ function openFxDetail(fx,who){
   if(cat.perform){ const b=document.createElement('p'); b.textContent=cat.perform; fb.append(b); }
   if(!cat.reveal&&!cat.perform) fb.textContent='';
   fxdtSync();
-  document.getElementById('fxdt').classList.add('show');
 }
 function fxdtSync(){
   if(!fxdtCur) return;
   const box=document.getElementById('fxdt');
   if(!box.classList.contains('show')) return;
+  const live=(fxdtWho==='Ta')?fxTa:fxMe;   // 账本里这一方此刻真正的药效
+  if(!live){ box.classList.remove('show'); fxdtCur=null; return; }   // 退了就收卡
+  if(live.cat!==fxdtCur.cat){ renderFxDetail(live,fxdtWho); return; }   // 顶旧换新：卡片跟着换
+  fxdtCur=live;   // 同一颗：只把最新的到期时间接过来（别重画，不然她正在读的演法会跳回顶部）
   const left=fxdtCur.until-Date.now();
   if(left<=0){ box.classList.remove('show'); fxdtCur=null; return; }
   const te=document.getElementById('fxdtTime'); te.className='tnum'; te.innerHTML=tnumHTML(fxFmt(left));
