@@ -30,6 +30,7 @@ TOOLS = [
      "description": (
          "和玩家共用的一罐整蛊软糖。action=look 看今天罐子里还剩哪些（只给外观，吃下去才知道是什么）；"
          "eat 自己吃一颗（index 是 look 里的编号，不给就随手抓）；feed 喂给玩家一颗，可带一句话；"
+         "look 会先告诉你自己身上现在有没有药效——身上还有药效时再吃新的，会顶掉旧的并扣 2 点勇气；"
          "dex 翻图鉴看吃过什么。吃下去的效果会落进账本，你接下来要按返回的「演法」演，直到时间到。"),
      "inputSchema": {
          "type": "object",
@@ -62,7 +63,10 @@ def run_tool(name, args):
                                 message=args.get("message"))
         if act == "dex":
             return candyjar.dex()
-        return candyjar.look(who="ai")
+        # look 一律先报「你身上现在有什么」——AI 只靠工具感知世界，不主动查就不知道自己中了药效，
+        # 会顺手再吃一颗把玩家刚喂的顶掉（还白扣 2 点勇气）。2026-09-05 mamo 实测撞上。
+        line = candyjar.context_line()
+        return (line + "\n\n" + candyjar.look(who="ai")) if line else candyjar.look(who="ai")
 
 
 def with_url(text):
