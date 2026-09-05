@@ -222,7 +222,15 @@
   body.picking #pickPrev,body.picking #pickNext{translate:0 -50%}
   /* 侧边栏：选罐时整条滑出左侧，选定后滑回来（Figma 选罐稿里它是隐藏图层） */
   #sidebar{transition:translate .42s cubic-bezier(.22,1,.36,1),opacity .32s ease}
-  body.picking #sidebar{translate:-88px 0;opacity:0;pointer-events:none}
+  body.picking #sidebar{translate:-88px 0;opacity:0;pointer-events:none;transition-delay:0s}
+  /* 开罐与否要等后端回话才知道；在那之前按住侧边栏，免得先亮一下再被换成选罐（mamo 2026-09-05 报"闪一下"）。 */
+  body.boot #sidebar{opacity:0;transition:none}
+  /* 错开先后：进场＝侧边栏先走、左钮 .10s、右钮 .18s；退场＝两钮先撤(右钮早 .06s)、侧边栏 .16s 后才滑回来 */
+  body.picking #pickPrev{transition-delay:.10s,.10s,0s}
+  body.picking #pickNext{transition-delay:.18s,.18s,0s}
+  #pickPrev{transition-delay:.06s,.06s,.48s}
+  #pickNext{transition-delay:0s,0s,.42s}
+  #sidebar{transition-delay:.16s}
   @media (prefers-reduced-motion:reduce){.pickBtn,#sidebar{transition:opacity .2s ease}}
   /* 装饰三方块：两侧 80px 细线 + 三枚 5px 菱形（蓝/橙/金），间距 8 */
   #botDeco{display:flex;align-items:center;justify-content:center;gap:8px;height:6px;width:100%}
@@ -873,7 +881,7 @@
   .ddSec.cause p{max-height:calc(24.98px * 6);overflow-y:auto;-webkit-overflow-scrolling:touch;
     overscroll-behavior:contain;scrollbar-width:none}
   .ddSec.cause p::-webkit-scrollbar{display:none}
-</style></head><body>
+</style></head><body class="boot">
 <div id="rotate"><div class="ph"></div><b>请把手机竖过来</b><i>Tournez votre téléphone, s'il vous plaît</i></div>
 <canvas id="c"></canvas>
 <button id="backBtn" aria-label="返回聊天"></button>
@@ -1299,14 +1307,16 @@ fetch('/assets/candyjar/candies.json?v='+Date.now()).then(r=>r.json()).then(d=>{
     SERVER=sv;
     if(sv.jar) curJar=sv.jar.jar||curJar;
     dexCount=sv.dex||{};
+    if(Array.isArray(sv.once_used)) onceUsed=sv.once_used;
     if(Array.isArray(sv.reserve)){ pocket=sv.reserve.map(id=>({id})); savePocket(); }   // 后端是权威:本地幽灵糖(早期演示遗留)在这里被清掉
     courage=(sv.courage&&sv.courage.user!=null)?sv.courage.user:courage;
     if(sv.active) applyServerEffects(sv.active);
     setJarText(); applyJarGlass(); applyJarLabel(); updCourage();
-    if(!sv.jar&&sv.choose){ enterPick(sv.choose); return; }   // 今天还没开罐：先选罐（enterPick 自己 fillJar）
+    if(!sv.jar&&sv.choose){ enterPick(sv.choose); document.body.classList.remove('boot'); return; }   // 今天还没开罐：先选罐（enterPick 自己 fillJar）
   }
+  document.body.classList.remove('boot');
   fillJar();
-}).catch(()=>{ fillJar(); });
+}).catch(()=>{ document.body.classList.remove('boot'); fillJar(); });
 // 用后端账本校准两枚牌。**两边各自独立判断**——
 // 旧版在「我没有药效」时直接 return，压根走不到处理 Ta 的那几行：
 // 喂糖给他 → 前端刚挂上牌 → 服务器回执一到就把牌抹掉了（mamo 2026-08-31 报"闪一下就没"）。
@@ -1560,6 +1570,7 @@ let jarSeed=_h||20260828;
 // 「我的罐子」状态要在首次 fillJar 之前就位(声明放商店块里会踩 TDZ——2026-09-01 实锤)
 let viewMine=false;
 let picking=false, PICK=null;   // 选罐中：PICK=后端给的五罐候选（{day,suggest,jars}）；选罐时罐里装的是候选罐的真糖
+let onceUsed=[];   // 今天已经买过、当天不再卖的限购糖（后端 once_used；勇气结晶豆一天一颗）
 let pocket=[];   // 储藏罐里的糖 [{id, from}]
 try{ pocket=JSON.parse(localStorage.getItem('candyjar_pocket_v1')||'[]'); }catch(e){}
 function isTodayJar(){ return !SERVER||!SERVER.jar||SERVER.jar.jar===curJar; }
@@ -2311,10 +2322,11 @@ function buildShop(){
         onBuy:()=>askBuy(c,'today',mp)
       }));
     }else{
+      const usedUp=onceUsed.indexOf(c.id)>=0;   // 限购糖今天买过了（勇气结晶豆：一天一颗，mamo 2026-09-05）
       body.appendChild(shopRow({
         nm:'「'+fullName(c)+'」',
-        ds:c.reveal||c.taste||'',
-        price:SHOP_PRICE, disabled:courage<SHOP_PRICE, isMM, entry:c,
+        ds:(c.reveal||c.taste||'')+(usedUp?'　（今天这颗已经买过一次了，明天再来）':''),
+        price:SHOP_PRICE, disabled:usedUp||courage<SHOP_PRICE, isMM, entry:c,
         onBuy:()=>askBuy(c,'reserve',SHOP_PRICE)
       }));
     }
@@ -2329,6 +2341,7 @@ function serverBuy(c,dest,price){
       if(!res||res.error){ scClose(); shopToast(res&&res.error||'买不了'); return; }
       if(res.courage&&res.courage.user!=null){ courage=res.courage.user; updCourage(); }
       if(res.mystery_price!=null&&SERVER) SERVER.mystery_price=res.mystery_price;   // 买一颗，下一颗涨一档
+      if(Array.isArray(res.once_used)) onceUsed=res.once_used;
       pocket=(res.reserve||[]).map(id=>({id}));
       if(res.jar&&SERVER&&SERVER.jar) SERVER.jar.candies=res.jar.candies;
       markSold(dest==='today'?'mystery':'select',c.id);   // 当槽下架,补货前不再回购

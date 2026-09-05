@@ -176,7 +176,7 @@ def view(who="user"):
     _prune(st)
     _write(st)
     out = {"jar": jar, "dex": st.get("dex", {}), "courage": st.get("courage", {}),
-           "mystery_price": mystery_price(st),
+           "mystery_price": mystery_price(st), "once_used": once_used(st, who),
            "reserve": _reserve(st, who), "active": status()}
     if jar is None:
         out["choose"] = options(st)
@@ -269,6 +269,8 @@ def _reserve(st, who):
 
 
 PRICES = {"today": 3, "reserve": 5}   # 指名陈列 5✦ 一口价；神秘柜的 3 只是阶梯起点，真价看 mystery_price()
+ONCE_A_DAY = {"mm_gold"}   # 一天限购一颗（mamo 2026-09-05）：金豆买 5、吃下 +10，净赚 5，
+                           # 指名柜 5 小时补一批，它反复上架就成了刷勇气的口子。别的机制糖不限。
 PRICE_LADDER = [3, 3, 4, 4, 5, 5]      # 神秘柜当天第 1..6 颗的价，之后一律最后一档（mamo 2026-09-05 定：一天买 6 颗正常）
 
 
@@ -279,7 +281,13 @@ def _buys_today(st):
     if b.get("day") != day:
         b = {"day": day, "n": 0}
         st["buys"] = b
+    b.setdefault("once", {})   # 限购登记 {who: [candy_id]}，跟着 day 一起归零
     return b
+
+
+def once_used(st, who="user"):
+    """今天已经买过、当天不再卖的限购糖（前端拿去把价签压灰）。"""
+    return list((_buys_today(st).get("once") or {}).get(who) or [])
 
 
 def mystery_price(st):
@@ -308,6 +316,8 @@ def buy(candy_id, dest="reserve", price=None, who="user"):
         return {"error": "没有这种糖。"}
     if dest not in PRICES:
         return {"error": "不知道要放到哪里去。"}
+    if candy_id in ONCE_A_DAY and candy_id in once_used(st, who):
+        return {"error": f"「{_fullname(c)}」一天只卖一颗，明天再来。"}
     have = st["courage"].get(who, START_COURAGE)
     price = mystery_price(st) if dest == "today" else PRICES[dest]
     if have < price:
@@ -322,11 +332,13 @@ def buy(candy_id, dest="reserve", price=None, who="user"):
         _buys_today(st)["n"] += 1                                                      # 阶梯价往上走一档
     else:
         _reserve(st, who).append(candy_id)
+    if candy_id in ONCE_A_DAY:
+        _buys_today(st)["once"].setdefault(who, []).append(candy_id)
     st["log"].append({"t": _now(), "buy": candy_id, "dest": dest, "price": price, "who": who})
     st["log"] = st["log"][-200:]   # 购买也进流水:09-04 储藏罐蒸发事故就是因为没流水,丢了几颗都查不出
     _write(st)
     return {"ok": True, "courage": st["courage"], "reserve": _reserve(st, who),
-            "jar": jar, "mystery_price": mystery_price(st)}
+            "jar": jar, "mystery_price": mystery_price(st), "once_used": once_used(st, who)}
 
 
 def _tick_turns():
