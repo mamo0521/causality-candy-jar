@@ -14,6 +14,7 @@ import json
 import os
 import sys
 import threading
+from datetime import datetime
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import candyjar  # noqa: E402
@@ -43,30 +44,65 @@ TOOLS = [
          "required": ["action"]}},
     {"name": "candy_status",
      "title": "当前药效",
-     "description": "查现在谁身上有什么药效、还剩几分钟。开新话题前想确认自己还在不在演，就查这个。",
+     "description": ("查现在谁身上有什么药效、到几点结束。你手里没有钟，"
+                     "**别凭感觉判断药效退没退**——想确认就调这个。"),
      "inputSchema": {"type": "object", "properties": {}}},
 ]
+
+
+def clock_lines():
+    """当前钟点 + 每条药效的**结束钟点**。
+
+    MCP 这头的 AI 没有钟：工具只在被调用那一刻说"还剩 N 分钟"，之后时间怎么走它全靠猜——
+    2026-09-05 mamo 实测，药效还剩 17 分钟，大人已经自己演起"药效退了我回来了"。
+    给它一个能对照的绝对时间，并且把"别自己宣布退了"写死在回执里。"""
+    st = candyjar._load()
+    gone = candyjar._prune(st)
+    candyjar._write(st)
+    now = candyjar._now_dt()
+    out = [f"此刻 {now:%H:%M}。"]
+    for a in st.get("active", []):
+        c = candyjar._find(a["candy_id"])
+        if not c:
+            continue
+        try:
+            exp = datetime.fromisoformat(a["expires"])
+        except Exception:
+            continue
+        who = "你" if a["target"] == "ai" else "Ta"
+        left = max(0, int((exp - now).total_seconds() // 60))
+        out.append(f"{who}身上的「{c['name']}」到 {exp:%H:%M} 结束（还剩约 {left} 分钟）。")
+    for a in gone:
+        c = candyjar._find(a.get("candy_id"))
+        if c:
+            who = "你" if a.get("target") == "ai" else "Ta"
+            out.append(f"{who}身上的「{c['name']}」刚刚退了。")
+    if len(out) > 1:
+        out.append("时间到之前别自己宣布药效退了；想确认就再调一次 candy_status。")
+    return "\n".join(out)
 
 
 def run_tool(name, args):
     args = args or {}
     with LOCK:
         if name == "candy_status":
-            return candyjar.context_line() or "现在谁身上都没有药效。"
+            line = candyjar.context_line()
+            return (line + "\n\n" + clock_lines()) if line else ("现在谁身上都没有药效。\n" + clock_lines())
         if name != "candy_jar":
             return f"没有叫「{name}」的工具。"
         act = args.get("action") or "look"
         if act == "eat":
-            return candyjar.eat(index=args.get("index"), who="ai")
+            return candyjar.eat(index=args.get("index"), who="ai") + "\n\n" + clock_lines()
         if act == "feed":
             return candyjar.eat(index=args.get("index"), who="ai", target="user",
-                                message=args.get("message"))
+                                message=args.get("message")) + "\n\n" + clock_lines()
         if act == "dex":
             return candyjar.dex()
         # look 一律先报「你身上现在有什么」——AI 只靠工具感知世界，不主动查就不知道自己中了药效，
         # 会顺手再吃一颗把玩家刚喂的顶掉（还白扣 2 点勇气）。2026-09-05 mamo 实测撞上。
         line = candyjar.context_line()
-        return (line + "\n\n" + candyjar.look(who="ai")) if line else candyjar.look(who="ai")
+        body = (line + "\n" + clock_lines() + "\n\n" + candyjar.look(who="ai")) if line else candyjar.look(who="ai")
+        return body
 
 
 def with_url(text):
@@ -91,7 +127,8 @@ def handle(req):
             "capabilities": {"tools": {}},
             "serverInfo": {"name": NAME, "title": "因果律软糖罐", "version": VERSION},
             "instructions": ("玩家在网页界面里开罐吃糖，你用 candy_jar 参与：可以自己吃、也可以喂给玩家。"
-                             "吃到有时长的糖之后，按返回文本里的「演法」演，时间到了自然散。")}}
+                             "吃到有时长的糖之后，按返回文本里的「演法」演到结束钟点为止。"
+                             "你手里没有钟：**别自己宣布药效退了**，想知道退没退就调 candy_status。")}}
     if method in ("notifications/initialized", "notifications/cancelled"):
         return None
     if method == "ping":
