@@ -9,6 +9,12 @@
   "license": "MIT",
   "keywords": ["game", "roleplay", "companion", "candy"],
   "icon": "icon.png",
+  "icons": [
+    { "src": "assets/icons/icon-16.png", "size": "16x16" },
+    { "src": "assets/icons/icon-32.png", "size": "32x32" },
+    { "src": "assets/icons/icon-48.png", "size": "48x48" },
+    { "src": "assets/icons/icon-128.png", "size": "128x128" }
+  ],
   "server": {
     "type": "python",
     "entry_point": "mcp_server.py",

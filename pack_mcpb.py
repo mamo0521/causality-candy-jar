@@ -26,6 +26,9 @@ def main():
             p = ROOT / name
             if p.exists():
                 z.write(p, name); n += 1
+        for p in sorted((ROOT / "assets").rglob("*")):      # 多尺寸图标
+            if p.is_file():
+                z.write(p, str(p.relative_to(ROOT))); n += 1
         for p in sorted((ROOT / "web").rglob("*")):
             if p.is_file() and not any(d in p.parts for d in SKIP_DIRS):
                 z.write(p, str(p.relative_to(ROOT))); n += 1
