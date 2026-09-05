@@ -206,14 +206,24 @@
   .pickBtn{position:fixed;top:52.5%;translate:0 -50%;width:66px;height:65px;padding:1px 1px 5px;
     border:.3px solid #8b654f;border-radius:49.5px;background:#f7ebd7;
     box-shadow:inset 0 0 0 5px #f7ebd7,inset 0 0 0 5.6px #c7925a;
-    display:none;flex-direction:column;align-items:center;justify-content:center;gap:3px;
-    z-index:6;pointer-events:auto;font:12px/1 var(--f-cn);letter-spacing:3px;text-indent:3px;color:#3b2a18;
-    -webkit-tap-highlight-color:transparent}
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
+    z-index:6;font:12px/1 var(--f-cn);letter-spacing:3px;text-indent:3px;color:#3b2a18;
+    -webkit-tap-highlight-color:transparent;
+    /* 进/退场：两颗钮各自往自己那侧滑出去，侧边栏同时从左边滑回来（mamo 2026-09-05：原来闪一下就换了）。
+       缺省态＝退到屏外；body.picking 时归位。visibility 延到位移结束才切，退场动画才播得完。 */
+    opacity:0;visibility:hidden;pointer-events:none;
+    transition:translate .42s cubic-bezier(.22,1,.36,1),opacity .3s ease,visibility 0s linear .42s}
   .pickBtn img{width:12px;height:13px;display:block;margin-left:-3px}   /* 抵消 text-indent，箭头真居中 */
-  #pickPrev{left:18px} #pickPrev img{rotate:-90deg}
-  #pickNext{right:19px} #pickNext img{rotate:90deg}
-  body.picking .pickBtn{display:flex}
-  body.picking #sidebar{display:none}   /* 选罐时侧边栏隐藏（Figma 图层隐藏） */
+  #pickPrev{left:18px;translate:-96px -50%} #pickPrev img{rotate:-90deg}
+  #pickNext{right:19px;translate:96px -50%} #pickNext img{rotate:90deg}
+  body.picking .pickBtn{opacity:1;visibility:visible;pointer-events:auto;
+    transition:translate .42s cubic-bezier(.22,1,.36,1),opacity .3s ease,visibility 0s}
+  /* 归位必须写成同级 ID：#pickPrev 的 translate 会压过 body.picking .pickBtn（本仓老坑：#sidebar button 压 #shopBtn 同案） */
+  body.picking #pickPrev,body.picking #pickNext{translate:0 -50%}
+  /* 侧边栏：选罐时整条滑出左侧，选定后滑回来（Figma 选罐稿里它是隐藏图层） */
+  #sidebar{transition:translate .42s cubic-bezier(.22,1,.36,1),opacity .32s ease}
+  body.picking #sidebar{translate:-88px 0;opacity:0;pointer-events:none}
+  @media (prefers-reduced-motion:reduce){.pickBtn,#sidebar{transition:opacity .2s ease}}
   /* 装饰三方块：两侧 80px 细线 + 三枚 5px 菱形（蓝/橙/金），间距 8 */
   #botDeco{display:flex;align-items:center;justify-content:center;gap:8px;height:6px;width:100%}
   #botDeco span{flex:none;width:80px;height:.5px;background:var(--c-line2)}
