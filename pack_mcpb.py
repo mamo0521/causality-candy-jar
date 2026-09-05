@@ -16,7 +16,7 @@ MANIFEST = json.loads((ROOT / "manifest.json").read_text(encoding="utf-8"))
 OUT = ROOT / f"{MANIFEST['name']}-{MANIFEST['version']}.mcpb"
 FILES = ["manifest.json", "icon.png", "mcp_server.py", "server.py", "candyjar.py",
          "README.md", "LICENSE", "LICENSE-CONTENT.md"]
-SKIP_DIRS = {"data", ".git", "__pycache__", "docs", ".github"}
+SKIP_DIRS = {"data", ".git", "__pycache__", "docs", ".github", "site"}   # demo.js/site 是 Pages 试玩版专用，不进安装包
 
 
 def main():
