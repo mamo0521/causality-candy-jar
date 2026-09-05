@@ -10,7 +10,9 @@
 
 ## 三步开玩 · Quick start
 
-需要电脑上装有 **Python 3.10+**（macOS 自带；Windows 到 python.org 装一个）。不需要安装任何依赖。
+需要电脑上装有 **Python 3.9 以上**，不需要装任何依赖（没有用到第三方库）。
+- **macOS**：系统自带，直接用。
+- **Windows**：到 [python.org](https://www.python.org/downloads/) 装一个，安装时记得勾上 “Add python.exe to PATH”。
 
 ```bash
 python3 server.py
@@ -54,6 +56,14 @@ GET http://127.0.0.1:8765/candyjar/context
 所有糖在 `web/assets/candyjar/candies.json`（服务端读同一份）。每颗糖：外观描述 `shop`、口味 `taste`、
 唯一正式名 `name`、角色短名 `effect`、判词 `reveal`、给 AI 的演法 `perform`（人设机制 + 三条例句）、
 来历 `lore`、时长区间 `dur`、配色 `scheme` × 造型 `shape`（组合必须唯一，可选值见文件里的 `_meta`）。
+
+## 关于维护 · Support
+
+这是一个个人项目，业余时间做的。欢迎开 Issue 说说遇到的问题、或者想加的糖——我会看，
+只是回得可能慢一些，也不一定每个需求都做得动，先说声抱歉。愿意自己动手改的话，PR 也欢迎。
+
+A personal side project made in spare time. Issues and PRs are welcome — replies may be slow,
+and not every request will make it in.
 
 ## 许可证 · License
 

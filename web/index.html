@@ -2679,16 +2679,7 @@ const JAR_LINES={   // 兜底文案（图鉴拿不到时才用）
   5:'查了一圈，所有线索都指向同一颗。烦。',
   mine:'都是你自己带回来的，吃吧，每一颗都花了钱。'   // mamo 2026-09-05 定稿
 };
-let _plaqueTaps=0,_plaqueT=0;
 document.getElementById('todayJarBtn').onclick=()=>{
-  const now=performance.now();
-  _plaqueTaps=(now-_plaqueT<600)?_plaqueTaps+1:1; _plaqueT=now;   // 5 连点的窗口放宽到 600ms,不然手速要求太高
-  if(_plaqueTaps>=5){   // 连点 5 次=样机后门:循环切罐(正式版删)。
-                       // 跟设置页「当前版本」连点 5 次开数字盘同一套手势;双击太容易被玩家误触(mamo 2026-09-04)
-    _plaqueTaps=0;
-    if(!viewMine&&!picking){ curJar=curJar%5+1; setJarText(); applyJarGlass(); applyJarLabel(); fillJar(); }
-    return;
-  }
   const el=document.getElementById('todayJarBtn'), wrap=document.querySelector('.today-wrap');
   el.classList.remove('tap'); void el.offsetWidth; el.classList.add('tap');   // 牌子抖
   if(wrap){ wrap.classList.remove('tap'); void wrap.offsetWidth; wrap.classList.add('tap'); }   // 绳子跟着扯
