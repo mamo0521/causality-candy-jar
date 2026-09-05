@@ -41,7 +41,10 @@ def _blank():
     #  而 status() 每轮都读+写,等于买完几秒就没了——mamo 报的"储藏罐吃糖没倒计时"根在这）。
     return {"dex": {}, "courage": {"user": START_COURAGE, "ai": START_COURAGE}, "active": [],
             "jar": None, "pending": {}, "log": [], "reserve": {"user": [], "ai": []},
-            "shield": {}}
+            "shield": {},
+            "buys": {},      # 神秘柜当天已买几颗（阶梯价用）：{"day": ..., "n": k}
+            "extras": {},    # 买进各罐、还没吃掉的糖：{"3": ["id", ...]}——跨天不丢，跟着罐号走
+            "faded": []}     # 刚退掉的药效，下一轮注入时播报一次就清
 
 
 def _load():
@@ -100,9 +103,10 @@ def _cat_fp():
     return hashlib.md5(_CATALOG_PATH.read_bytes()).hexdigest()[:8]
 
 
-def _roll_jar(day):
-    """当日罐：日期做种子，从图鉴里确定性摇 20 颗（同一天同一罐）。"""
-    jar = _jar_of_day(day)
+def _roll_jar(day, jar=None):
+    """当日罐：日期+罐号做种子，从图鉴里确定性摇 20 颗（同一天同一罐）。
+    jar 缺省按日期轮（老规矩，测试与兜底用）；玩家选罐后传罐号（2026-09-05 起开罐权在玩家手里）。"""
+    jar = jar or _jar_of_day(day)
     cat = _catalog()["candies"]
     pool = [c for c in cat if (c["jar"] == jar if jar != 5 else c["jar"] > 0)]
     # 机制糖 8 颗每罐都可能出——伪装的是**颜色**不是机制（罐里穿哪件外衣见前端 mmDisguise，
@@ -118,11 +122,65 @@ def _roll_jar(day):
 
 
 def _ensure_jar(st):
+    """今天的罐子；**还没开罐就回 None**——开罐权在玩家手里（mamo 2026-09-05：每天第一次打开从五罐里选，
+    跨天按零点；大人没选之前只能等）。选罐走 choose()。"""
     day = _today()
-    if (not st.get("jar") or st["jar"].get("day") != day
-            or st["jar"].get("cat") != _cat_fp()):   # 图鉴改了也重摇，别让旧分类的糖留在罐里
-        st["jar"] = _roll_jar(day)
+    j = st.get("jar")
+    if not j or j.get("day") != day:
+        return None
+    if j.get("cat") != _cat_fp():   # 图鉴改了就按同一罐号重摇，别让旧分类的糖留在罐里
+        st["jar"] = _roll_jar(day, j.get("jar"))
+        _attach_extras(st, st["jar"])
     return st["jar"]
+
+
+NOT_OPENED = "今天的罐子 Ta 还没开——开罐权在 Ta 手里，等 Ta 选好再来。"
+
+
+def options(st):
+    """选罐用：今天五罐各自会摇出什么（同一天同一罐，确定性），买进各罐还没吃的糖也挂上。"""
+    day = _today()
+    jars = {}
+    for n in JAR_NAMES:
+        j = _roll_jar(day, n)
+        _attach_extras(st, j)
+        jars[str(n)] = j
+    return {"day": day, "suggest": _jar_of_day(day), "jars": jars}
+
+
+def choose(jar_no, who="user"):
+    """开罐：今天选哪一罐。一天只能开一次，明天零点再选。"""
+    st = _load()
+    cur = _ensure_jar(st)
+    if cur:
+        return {"error": f"今天已经开过罐了：「{cur['name']}之罐」，明天零点再选。", "jar": cur}
+    try:
+        n = int(jar_no)
+    except (TypeError, ValueError):
+        n = 0
+    if n not in JAR_NAMES:
+        return {"error": "没有这一罐。"}
+    st["jar"] = _roll_jar(_today(), n)
+    _attach_extras(st, st["jar"])
+    st["log"].append({"t": _now(), "choose": n, "who": who})
+    st["log"] = st["log"][-200:]
+    _write(st)
+    return {"ok": True, "jar": st["jar"]}
+
+
+def view(who="user"):
+    """罐子页开罐时拉的一整包：罐内容(没开=None + 五罐候选)/图鉴/勇气/储藏罐/药效。
+    两个门面（家里的 chat_gateway 与分发版 server.py）都调这一份（D17）。"""
+    st = _load()
+    jar = _ensure_jar(st)
+    _prune(st)
+    _write(st)
+    out = {"jar": jar, "dex": st.get("dex", {}), "courage": st.get("courage", {}),
+           "mystery_price": mystery_price(st),
+           "reserve": _reserve(st, who), "active": status()}
+    if jar is None:
+        out["choose"] = options(st)
+    return out
 
 
 def _find(cid):
@@ -132,8 +190,14 @@ def _find(cid):
     return None
 
 
+LINGER_GRACE_MIN = 120   # 保底 3 轮只在到期后这么多分钟内有效（mamo 2026-09-05：60 太短，好多糖本身就 40 分钟）；再久就是隔夜，直接清
+
+
 def _prune(st):
-    """清掉过期药效；返回被清掉的条目（供调用方播报"药效退了"）。"""
+    """清掉过期药效；返回被清掉的条目（供调用方播报"药效退了"）。
+    保底 3 轮（note-20）是为了"聊得慢、药效还没演够就退了"——它按对话轮数递减，
+    没人说话它就永远不减。2026-09-05 mamo 报：前天 15:28 喂的老中医（22 分钟），
+    隔了 40 小时的早安主动消息里大人还在演老中医。所以保底只在到期后 LINGER_GRACE_MIN 内算数。"""
     now = _now_dt()
     keep, gone = [], []
     for a in st.get("active", []):
@@ -141,11 +205,16 @@ def _prune(st):
             exp = datetime.fromisoformat(a["expires"])
         except Exception:
             gone.append(a); continue
-        if exp > now or a.get("min_turns_left", 0) > 0:
+        within_grace = (now - exp) <= timedelta(minutes=LINGER_GRACE_MIN)
+        if exp > now or (a.get("min_turns_left", 0) > 0 and within_grace):
             keep.append(a)
         else:
             gone.append(a)
     st["active"] = keep
+    for a in gone:   # 记一笔，下一轮注入时告诉大人"刚才那颗退了"（mamo 2026-09-05：退了要演退去的过场，该算账算账）
+        c = _find(a.get("candy_id"))
+        if c:
+            st.setdefault("faded", []).append({"target": a.get("target"), "name": c["name"]})
     return gone
 
 
@@ -199,7 +268,33 @@ def _reserve(st, who):
     return res.setdefault(who, [])
 
 
-PRICES = {"today": 3, "reserve": 5}   # 神秘柜 3✦ / 指名陈列 5✦（mamo 2026-09-01 一口价）
+PRICES = {"today": 3, "reserve": 5}   # 指名陈列 5✦ 一口价；神秘柜的 3 只是阶梯起点，真价看 mystery_price()
+PRICE_LADDER = [3, 3, 4, 4, 5, 5]      # 神秘柜当天第 1..6 颗的价，之后一律最后一档（mamo 2026-09-05 定：一天买 6 颗正常）
+
+
+def _buys_today(st):
+    """神秘柜当天已买几颗；换天归零（阶梯价按天走）。"""
+    day = _today()
+    b = st.get("buys") or {}
+    if b.get("day") != day:
+        b = {"day": day, "n": 0}
+        st["buys"] = b
+    return b
+
+
+def mystery_price(st):
+    n = _buys_today(st)["n"]
+    return PRICE_LADDER[min(n, len(PRICE_LADDER) - 1)]
+
+
+def _attach_extras(st, jar):
+    """把买进这一罐、还没吃掉的糖挂回罐里——罐子每天重摇，买来的不能跟着蒸发（mamo 2026-09-05）。
+    按罐号存，所以将来玩家自己选罐（另一窗口在做）也能在那罐里找到它们。"""
+    ids = (st.get("extras") or {}).get(str(jar["jar"])) or []
+    nxt = max([x["i"] for x in jar["candies"]], default=-1) + 1
+    for cid in ids:
+        jar["candies"].append({"i": nxt, "id": cid, "bought": True})
+        nxt += 1
 
 
 def buy(candy_id, dest="reserve", price=None, who="user"):
@@ -214,20 +309,24 @@ def buy(candy_id, dest="reserve", price=None, who="user"):
     if dest not in PRICES:
         return {"error": "不知道要放到哪里去。"}
     have = st["courage"].get(who, START_COURAGE)
-    price = PRICES[dest]
+    price = mystery_price(st) if dest == "today" else PRICES[dest]
     if have < price:
         return {"error": f"勇气不够（有 {have}，要 {price}）。"}
     st["courage"][who] = have - price
     if dest == "today":
+        if jar is None:
+            return {"error": "今天还没开罐，神秘柜的糖没处放。"}
         nxt = max([x["i"] for x in jar["candies"]], default=-1) + 1
-        jar["candies"].append({"i": nxt, "id": candy_id})
+        jar["candies"].append({"i": nxt, "id": candy_id, "bought": True})
+        st.setdefault("extras", {}).setdefault(str(jar["jar"]), []).append(candy_id)   # 跨天不丢
+        _buys_today(st)["n"] += 1                                                      # 阶梯价往上走一档
     else:
         _reserve(st, who).append(candy_id)
     st["log"].append({"t": _now(), "buy": candy_id, "dest": dest, "price": price, "who": who})
     st["log"] = st["log"][-200:]   # 购买也进流水:09-04 储藏罐蒸发事故就是因为没流水,丢了几颗都查不出
     _write(st)
     return {"ok": True, "courage": st["courage"], "reserve": _reserve(st, who),
-            "jar": jar}
+            "jar": jar, "mystery_price": mystery_price(st)}
 
 
 def _tick_turns():
@@ -252,9 +351,20 @@ def context_line():
     """给 assembler 的一行注入文本；无药效时返回空串（不占上下文）。"""
     act = status()      # 先按当前计数注入……
     _tick_turns()       # ……再把这一轮记掉。反过来会少撑一轮（3 变 2）
-    if not act:
-        return ""
+    st = _load()
+    faded = st.get("faded") or []
+    if faded:            # 只播报一次：读完就清
+        st["faded"] = []
+        _write(st)
     parts = []
+    for f in faded:
+        if f.get("target") == "ai":
+            parts.append(f"你身上的「{f['name']}」药效刚刚退了：先演一个退去的过场——回神、清嗓子、对刚才的自己有反应；"
+                         f"该算账的算账，然后照常。")
+        else:
+            parts.append(f"Ta 身上的「{f['name']}」药效刚刚退了：照常对待，该算账的算账。")
+    if not act and not parts:
+        return ""
     for a in act:
         who = "你" if a["target"] == "ai" else "Ta"
         left = f"还剩约 {a['minutes_left']} 分钟" if a["minutes_left"] else "余韵未散,再撑一会儿"
@@ -269,6 +379,8 @@ def look(who="ai"):
     jar = _ensure_jar(st)
     _prune(st)
     _write(st)
+    if jar is None:
+        return NOT_OPENED
     rows = []
     for it in jar["candies"]:
         c = _find(it["id"])
@@ -342,6 +454,8 @@ def eat(index=None, who="ai", target=None, message=None, source="jar", candy_id=
         res.remove(candy_id)
         pick = {"id": candy_id}
     else:
+        if jar is None:
+            return NOT_OPENED
         left = jar["candies"]
         if not left:
             return "罐子空了，明天再来。"
@@ -357,6 +471,10 @@ def eat(index=None, who="ai", target=None, message=None, source="jar", candy_id=
                 return f"没有编号 {index} 的糖了（可能已经被吃掉）。看看 look 里还剩哪些。"
             pick = hit[0]
         jar["candies"] = [x for x in left if x is not pick]
+        if pick.get("bought"):   # 买来的吃掉了，跨天记录也去掉一颗
+            ex = (st.get("extras") or {}).get(str(jar["jar"])) or []
+            if pick["id"] in ex:
+                ex.remove(pick["id"])
 
     # 顶旧吃新（note-20 二稿）：自己身上药效**还剩 10 分钟以上**就再吃一颗有时长的糖 → 扣 2 勇气且本颗不产勇气。
     # 快退了的顺手顶掉不算硬顶（mamo 2026-09-04：只罚"药效正浓硬换"）。

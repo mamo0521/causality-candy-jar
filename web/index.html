@@ -199,6 +199,21 @@
   #mineBtn.return-today{background:#ecd6b5;
     box-shadow:inset 0 0 0 .3px #8b654f,inset 0 0 0 5px #f7ead7,inset 0 0 0 5.6px #946246}
   #mineBtn.return-today i{color:#fff5e7}
+  /* ── 选罐（Figma「软糖罐主界面-选罐」1219:22176，mamo 2026-09-05）──
+     上一罐/下一罐：66×65 圆角 49.5，底 #f7ebd7，.3px #8b654f 描边，内环 5px 底色 + 5.6px #c7925a；
+     左 18 / 右 19（393 宽里 308+66），竖向卡在罐子腰上（Figma top 415 → 中心 447.5/852 ≈ 52.5%）。
+     文字 12px 字距 3 #3b2a18；箭头 12×13 #c5a883，上一罐转 -90°、下一罐转 90°。 */
+  .pickBtn{position:fixed;top:52.5%;translate:0 -50%;width:66px;height:65px;padding:1px 1px 5px;
+    border:.3px solid #8b654f;border-radius:49.5px;background:#f7ebd7;
+    box-shadow:inset 0 0 0 5px #f7ebd7,inset 0 0 0 5.6px #c7925a;
+    display:none;flex-direction:column;align-items:center;justify-content:center;gap:3px;
+    z-index:6;pointer-events:auto;font:12px/1 var(--f-cn);letter-spacing:3px;text-indent:3px;color:#3b2a18;
+    -webkit-tap-highlight-color:transparent}
+  .pickBtn img{width:12px;height:13px;display:block;margin-left:-3px}   /* 抵消 text-indent，箭头真居中 */
+  #pickPrev{left:18px} #pickPrev img{rotate:-90deg}
+  #pickNext{right:19px} #pickNext img{rotate:90deg}
+  body.picking .pickBtn{display:flex}
+  body.picking #sidebar{display:none}   /* 选罐时侧边栏隐藏（Figma 图层隐藏） */
   /* 装饰三方块：两侧 80px 细线 + 三枚 5px 菱形（蓝/橙/金），间距 8 */
   #botDeco{display:flex;align-items:center;justify-content:center;gap:8px;height:6px;width:100%}
   #botDeco span{flex:none;width:80px;height:.5px;background:var(--c-line2)}
@@ -576,6 +591,11 @@
     font:12px/normal var(--f-cn);color:#fcf5e6;white-space:nowrap;cursor:pointer;-webkit-tap-highlight-color:transparent}
   .shopRow button[disabled]{opacity:.45;cursor:default}
   .shopEmpty{width:100%;padding:18px 6px;text-align:center;font:11.5px/1.8 var(--f-cn);color:var(--c-mute)}
+  /* 神秘柜分割线：上面是本罐的新糖，下面是别的罐补进来的（mamo 2026-09-04） */
+  .shopDivider{width:100%;display:flex;align-items:center;gap:10px;padding:4px 6px 2px;color:var(--c-mute)}
+  .shopDivider i{flex:1;height:1px;background:rgba(59,42,24,.28)}
+  .shopDivider span{flex:none;font:11px/1.6 var(--f-cn);letter-spacing:2px;white-space:nowrap}
+  .shopDivider em{font:italic 10px/1 var(--f-en);letter-spacing:1px;opacity:.75}
   #shopFoot{position:relative;z-index:1;flex:none;display:flex;align-items:center;justify-content:center;
     padding:10px 0 calc(14px + env(safe-area-inset-bottom))}   /* 原来占死 124px,最后一张卡被裁(mamo 绿圈) */
   #shopFoot .dias{display:flex;align-items:center;gap:9.3px;height:8px}
@@ -872,6 +892,8 @@
   <div class="h2">Si vous l'osez, savourez le destin</div>
 </div>
 <div id="fxchips"><button id="fxchipMe" style="display:none"></button><button id="fxchipTa" style="display:none"></button></div>
+<button class="pickBtn" id="pickPrev"><img src="/assets/candyjar/ui/pick-arrow.svg" alt="">上一罐</button>
+<button class="pickBtn" id="pickNext"><img src="/assets/candyjar/ui/pick-arrow.svg" alt="">下一罐</button>
 <div id="sidebar">
   <button id="shopBtn"><i class="dia"></i><span class="lb">商店</span><i class="en">BOUTIQUE</i></button>
   <button id="dexBtn"><i class="dia"></i><span class="lb">图鉴</span><i class="en">INDEX</i></button>
@@ -1263,14 +1285,15 @@ fetch('/assets/candyjar/candies.json?v='+Date.now()).then(r=>r.json()).then(d=>{
   for(const c of d.candies) DEF.set(c.scheme+'|'+c.shape, c);
   return fetch('/candyjar').then(r=>r.ok?r.json():null).catch(()=>null);
 }).then(sv=>{
-  if(sv && sv.jar){
+  if(sv){
     SERVER=sv;
-    curJar=sv.jar.jar||curJar;
+    if(sv.jar) curJar=sv.jar.jar||curJar;
     dexCount=sv.dex||{};
     if(Array.isArray(sv.reserve)){ pocket=sv.reserve.map(id=>({id})); savePocket(); }   // 后端是权威:本地幽灵糖(早期演示遗留)在这里被清掉
     courage=(sv.courage&&sv.courage.user!=null)?sv.courage.user:courage;
     if(sv.active) applyServerEffects(sv.active);
     setJarText(); applyJarGlass(); applyJarLabel(); updCourage();
+    if(!sv.jar&&sv.choose){ enterPick(sv.choose); return; }   // 今天还没开罐：先选罐（enterPick 自己 fillJar）
   }
   fillJar();
 }).catch(()=>{ fillJar(); });
@@ -1526,11 +1549,12 @@ function candy(i,R,forceCat){
 let jarSeed=_h||20260828;
 // 「我的罐子」状态要在首次 fillJar 之前就位(声明放商店块里会踩 TDZ——2026-09-01 实锤)
 let viewMine=false;
+let picking=false, PICK=null;   // 选罐中：PICK=后端给的五罐候选（{day,suggest,jars}）；选罐时罐里装的是候选罐的真糖
 let pocket=[];   // 储藏罐里的糖 [{id, from}]
 try{ pocket=JSON.parse(localStorage.getItem('candyjar_pocket_v1')||'[]'); }catch(e){}
 function isTodayJar(){ return !SERVER||!SERVER.jar||SERVER.jar.jar===curJar; }
 // 能不能吃：储藏罐能，今日罐能，**预览别的罐不能**（那些糖不在账本里）。
-function canEat(){ return viewMine||isTodayJar(); }
+function canEat(){ return !picking&&(viewMine||isTodayJar()); }   // 选罐时只能看：还没开罐，账本上没有这些糖
 function fillJar(){
   while(itemsGroup.children.length) itemsGroup.remove(itemsGroup.children[0]);
   shakables.length=0;
@@ -1541,7 +1565,10 @@ function fillJar(){
   // 真实库存只在「今日罐」生效，预览罐只能看不能吃（mamo 2026-09-04：要能切罐看效果，但玩家不能借此变糖）。
   const realCats=(!viewMine&&isTodayJar()&&SERVER&&SERVER.jar&&CATALOG)
     ?SERVER.jar.candies.map(x=>CATALOG.candies.find(c=>c.id===x.id)).filter(Boolean):null;
-  const forced=viewMine?mineCats:realCats;
+  // 选罐时装的是候选罐当天真会摇出来的糖（同一天同一罐确定），选定后就是这一罐、不重摇
+  const pickCats=(picking&&PICK&&CATALOG&&PICK.jars[String(curJar)])
+    ?PICK.jars[String(curJar)].candies.map(x=>CATALOG.candies.find(c=>c.id===x.id)).filter(Boolean):null;
+  const forced=viewMine?mineCats:(pickCats||realCats);
   const N=forced?forced.length:((curJar===5)?44:30), R=rnd(jarSeed), placed=[];
   for(let i=0;i<N;i++){
     const c=candy(i,R,forced?forced[i]:null), r=c.userData.r;
@@ -2187,11 +2214,20 @@ function shelfNow(kind){
   const cyc=(kind==='mystery')?MYSTERY_CYCLE_MS:SHOP_CYCLE_MS;
   const slot=Math.floor(Date.now()/cyc);
   const next=(slot+1)*cyc;
+  const todayJar=(SERVER&&SERVER.jar&&SERVER.jar.jar)||curJar;
   let s=shelfMemo[kind];
-  if(!s||s.slot!==slot){   // 新一批货:此刻摇一次,整槽期内认这份清单
-    let pool;
+  if(!s||s.slot!==slot||(kind==='mystery'&&s.jar!==todayJar)){   // 新一批货:此刻摇一次,整槽期内认这份清单;神秘柜换了罐也重摇
+    let pool, foreignPool=[];
     if(kind==='mystery'){   // 神秘柜:没解锁过的品种(开出来才知道是什么)
-      pool=CATALOG.candies.filter(c=>!dexCount[c.id]&&c.dur&&c.dur[1]&&!(SERVER&&SERVER.jar&&SERVER.jar.candies.some(x=>x.id===c.id)));
+      // 本罐优先——买进今日罐的糖得是这一罐的颜色，别让桃花劫里蹦出黄糖（mamo 2026-09-04）。
+      // 本罐的新糖不够 4 颗时，剩下的格子从别的罐补，渲染时隔一条分割线标明「其他罐子的糖」。
+      // 罐⑤世界线收束本来就是全池，不分本罐外罐。
+      // c.jar>0：机制糖是女巫常备（指名陈列有专属格），不算「新品种」——护体豆有 10 分钟时长，
+      // 以前光看 dur 会把它当效果糖抽进神秘柜（2026-09-04 验分割线时撞见）
+      const base=c=>c.jar>0&&!dexCount[c.id]&&c.dur&&c.dur[1]&&!(SERVER&&SERVER.jar&&SERVER.jar.candies.some(x=>x.id===c.id));
+      const isMine=c=>todayJar===5||c.jar===todayJar;
+      pool=CATALOG.candies.filter(c=>base(c)&&isMine(c));
+      foreignPool=CATALOG.candies.filter(c=>base(c)&&!isMine(c));
     }else{                  // 指名陈列:吃过的才上架
       pool=CATALOG.candies.filter(c=>dexCount[c.id]&&c.dur&&c.dur[1]);
     }
@@ -2199,16 +2235,18 @@ function shelfNow(kind){
     const p2=pool.slice(), picks=[];
     const nSlots=(kind==='select')?3:4;
     for(let i=0;i<nSlots&&p2.length;i++) picks.push(p2.splice(Math.floor(R()*p2.length),1)[0]);
+    const f2=foreignPool.slice(), foreign=[];
+    for(let i=picks.length;i<nSlots&&f2.length;i++){ const c=f2.splice(Math.floor(R()*f2.length),1)[0]; picks.push(c); foreign.push(c.id); }
     if(kind==='select'){   // 第四格=女巫常备:机制糖不需解锁(药剂是她的本行,软糖才是猎奇品)
       const mm=CATALOG.candies.filter(c=>c.id.startsWith('mm_')&&c.id!=='mm_choco');
       if(mm.length) picks.push(mm[Math.floor(R()*mm.length)]);
     }
-    s=shelfMemo[kind]={slot,ids:picks.map(c=>c.id),sold:[]};
+    s=shelfMemo[kind]={slot,jar:todayJar,ids:picks.map(c=>c.id),sold:[],foreign};
     saveShelf();
   }
   const items=s.ids.filter(id=>!s.sold.includes(id))
     .map(id=>CATALOG.candies.find(c=>c.id===id)).filter(Boolean);
-  return {items,next};
+  return {items,next,foreign:new Set(s.foreign||[])};
 }
 function shopRow({nm,ds,price,disabled,onBuy,isMM,entry}){
   const row=document.createElement('div'); row.className='shopRow'+(isMM?' mm':'');
@@ -2234,7 +2272,7 @@ function buildShop(){
   document.getElementById('shopCourage').textContent=courage;
   document.getElementById('tabMystery').classList.toggle('on',shopTab==='mystery');
   document.getElementById('tabSelect').classList.toggle('on',shopTab==='select');
-  const {items,next}=shelfNow(shopTab);
+  const {items,next,foreign}=shelfNow(shopTab);
   const mins=Math.max(1,Math.ceil((next-Date.now())/60000));
   const hh=Math.floor(mins/60), mm2=mins%60;
   document.getElementById('shopRefresh').textContent='刷新时间  '+(hh?hh+' 小时 ':'')+mm2+' 分后';
@@ -2245,14 +2283,22 @@ function buildShop(){
       :'陈列柜只收你尝过的味道。想让它上架，先亲自尝过。';
     body.appendChild(e);
   }
+  let dividerDone=false;
   items.forEach(c=>{
     const isMM=c.id.startsWith('mm_');
     if(shopTab==='mystery'){
+      if(!dividerDone&&foreign&&foreign.has(c.id)){   // 本罐的新糖不够了，下面是别的罐来的
+        dividerDone=true;
+        const d=document.createElement('div'); d.className='shopDivider';
+        d.innerHTML='<i></i><span>其他罐子的糖 · <em>Des autres bocaux</em></span><i></i>';
+        body.appendChild(d);
+      }
+      const mp=(SERVER&&SERVER.mystery_price)||MYSTERY_PRICE;   // 阶梯价由后端定：当天第几颗（mamo 2026-09-05：3 3 4 4 5 5）
       body.appendChild(shopRow({
         nm:'',
         ds:c.shop||'女巫没写标签。',
-        price:MYSTERY_PRICE, disabled:courage<MYSTERY_PRICE, isMM, entry:c,
-        onBuy:()=>askBuy(c,'today',MYSTERY_PRICE)
+        price:mp, disabled:courage<mp, isMM, entry:c,
+        onBuy:()=>askBuy(c,'today',mp)
       }));
     }else{
       body.appendChild(shopRow({
@@ -2272,6 +2318,7 @@ function serverBuy(c,dest,price){
       ok.disabled=false;
       if(!res||res.error){ scClose(); shopToast(res&&res.error||'买不了'); return; }
       if(res.courage&&res.courage.user!=null){ courage=res.courage.user; updCourage(); }
+      if(res.mystery_price!=null&&SERVER) SERVER.mystery_price=res.mystery_price;   // 买一颗，下一颗涨一档
       pocket=(res.reserve||[]).map(id=>({id}));
       if(res.jar&&SERVER&&SERVER.jar) SERVER.jar.candies=res.jar.candies;
       markSold(dest==='today'?'mystery':'select',c.id);   // 当槽下架,补货前不再回购
@@ -2302,7 +2349,7 @@ function scOpen(title,desc,okText,confirm,previewEntry){
   document.querySelector('#shopConfirm .card').classList.toggle('done',!confirm);
   document.getElementById('shopConfirm').classList.add('show');
 }
-function scClose(){ scPending=null; document.getElementById('shopConfirm').classList.remove('show'); }
+function scClose(){ scPending=null; scChoose=false; document.getElementById('shopConfirm').classList.remove('show'); }
 function askBuy(c,dest,price){
   scPending={c,dest,price};
   scOpen(dest==='today'?'':'「'+fullName(c)+'」',
@@ -2316,6 +2363,7 @@ function askBuy(c,dest,price){
 document.getElementById('scOk').onclick=event=>{
   const p=scPending; scPending=null;
   afterCardButtonPress(event.currentTarget,()=>{
+    if(scChoose){ scChoose=false; serverChoose(); return; }   // 选罐确认
     if(p) serverBuy(p.c,p.dest,p.price);   // 弹窗留在原地等回执,成功后原地变「购买完成」
     else scClose();                        // 完成态:这一下就是关卡片
   });
@@ -2326,9 +2374,10 @@ document.getElementById('shopConfirm').onclick=e=>{ if(e.target.id==='shopConfir
 function updMineBtn(){
   const b=document.getElementById('mineBtn');
   b.classList.toggle('return-today',viewMine);
-  b.querySelector('.t').textContent=viewMine?'回到今日罐':'我的储藏罐';
+  b.querySelector('.t').textContent=picking?'选这罐':(viewMine?'回到今日罐':'我的储藏罐');
 }
 document.getElementById('mineBtn').onclick=()=>{
+  if(picking){ askPick(); return; }   // 选罐态：这颗按钮就是「选这罐」
   viewMine=!viewMine;
   const span=document.getElementById('todayJarBtn').querySelector('span');
   const topText=document.querySelector('.tj-top textPath');
@@ -2350,12 +2399,12 @@ document.getElementById('mineBtn').onclick=()=>{
 updMineBtn();
 // 吊牌的吊落摆动只在**标题整包从上方落下**时播（入场那一次）。
 // 关卡片时不再单独重播——只有吊牌动、其余标题不动，反而怪（mamo 2026-09-01）。
-function jarBubble(msg){
+function jarBubble(msg,hold){
   const t=document.getElementById('jarBubble');
   t.textContent=msg; t.classList.add('on');
   t.classList.remove('out');
   clearTimeout(t._h); t._h=setTimeout(()=>{ t.classList.remove('on'); t.classList.add('out');
-    setTimeout(()=>t.classList.remove('out'),450); },2400);
+    setTimeout(()=>t.classList.remove('out'),450); },hold||2400);
 }
 document.getElementById('shopBtn').onclick=()=>{ buildShop(); document.getElementById('shop').classList.add('show'); };
 function closeFullScreenView(id){
@@ -2577,8 +2626,8 @@ document.getElementById('dexBack').onclick=e=>afterCardButtonPress(e.currentTarg
 updCourage();
 function setJarText(){
   const el=document.getElementById('todayJarBtn');
-  el.querySelector('span').textContent='今日';
-  document.getElementById('todayArcText').textContent=JAR_NAMES[curJar]+'之罐';   // 两侧不加点(mamo)
+  el.querySelector('span').textContent=picking?'请选择':'今日';
+  document.getElementById('todayArcText').textContent=picking?'今日的糖罐':(JAR_NAMES[curJar]+'之罐');   // 两侧不加点(mamo)；选罐态照 Figma 牌子文案
 }
 setJarText();
 // 罐子页自己也每分钟对一次后端账本(mamo:点进 jar 里也应该看到倒计时)
@@ -2606,14 +2655,49 @@ document.getElementById('todayJarBtn').onclick=()=>{
   if(_plaqueTaps>=5){   // 连点 5 次=样机后门:循环切罐(正式版删)。
                        // 跟设置页「当前版本」连点 5 次开数字盘同一套手势;双击太容易被玩家误触(mamo 2026-09-04)
     _plaqueTaps=0;
-    if(!viewMine){ curJar=curJar%5+1; setJarText(); applyJarGlass(); applyJarLabel(); fillJar(); }
+    if(!viewMine&&!picking){ curJar=curJar%5+1; setJarText(); applyJarGlass(); applyJarLabel(); fillJar(); }
     return;
   }
   const el=document.getElementById('todayJarBtn'), wrap=document.querySelector('.today-wrap');
   el.classList.remove('tap'); void el.offsetWidth; el.classList.add('tap');   // 牌子抖
   if(wrap){ wrap.classList.remove('tap'); void wrap.offsetWidth; wrap.classList.add('tap'); }   // 绳子跟着扯
-  jarBubble(viewMine?JAR_LINES.mine:(jarLine(curJar)+(isTodayJar()?'':'　（预览·只能看）')));
+  jarBubble(viewMine?JAR_LINES.mine:(jarLine(curJar)+((isTodayJar()||picking)?'':'　（预览·只能看）')));
 };
+// ── 选罐（mamo 2026-09-05：每天第一次打开从五罐里选一罐，跨天按零点；大人没选之前只能等）──
+// 同一个场景里的同一个罐子换装：换玻璃色、装那罐当天的真糖、跳一下——3D 开销与平时一样，
+// 不另起渲染器（弹窗里另起的糖"效果和罐子里不一样"，根子就在这）。Figma 1219:22176。
+function enterPick(ch){
+  picking=true; PICK=ch; viewMine=false;
+  curJar=ch.suggest||curJar;   // 起手停在按日期轮到的那罐
+  document.body.classList.add('picking');
+  setJarText(); updMineBtn(); applyJarGlass(); applyJarLabel(); fillJar(); wake&&wake();
+  setTimeout(()=>{ shakeT=0; jarBubble(jarLine(curJar),3400); },900);
+}
+function pickStep(d){
+  if(!picking) return;
+  curJar=((curJar-1+d+5)%5)+1;
+  setJarText(); applyJarGlass(); applyJarLabel(); fillJar(); wake&&wake();
+  shakeT=0;   // 换罐=罐子跳一下（同储藏罐切换）
+  jarBubble(jarLine(curJar),3400);   // 判词浮现（Figma「浮现文字」5.8s 一轮：进 1s·停 3s·出 1.5s）
+}
+document.getElementById('pickPrev').onclick=()=>pickStep(-1);
+document.getElementById('pickNext').onclick=()=>pickStep(1);
+function askPick(){   // 二次确认：沿用商店买糖那张确认卡（mamo 2026-09-05 拍）
+  scPending=null;
+  scOpen('就选「'+JAR_NAMES[curJar]+'之罐」？','今天只能开这一罐，明天零点才换。','就它了',true);
+  scChoose=true;
+}
+let scChoose=false;
+function serverChoose(){
+  fetch('/candyjar/choose',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({jar:curJar})})
+    .then(r=>r.json()).then(res=>{
+      if(!res||!res.jar){ scOpen('没开成',(res&&res.error)||'罐子没搭理我，再试一次。','知道了',false); return; }
+      if(!SERVER) SERVER={}; SERVER.jar=res.jar; curJar=res.jar.jar;
+      picking=false; PICK=null; document.body.classList.remove('picking');
+      scClose();
+      setJarText(); updMineBtn(); fillJar(); shakeT=0; jarBubble(jarLine(curJar));
+    }).catch(()=>scOpen('没开成','罐子没搭理我，再试一次。','知道了',false));
+}
 applyJarGlass(); applyJarLabel();
 setTimeout(()=>{ shakeT=0; },800);   // 开场罐子自己抖一下=「点我」的暗示(mamo)
 

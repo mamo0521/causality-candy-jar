@@ -62,13 +62,8 @@ class Handler(SimpleHTTPRequestHandler):
     # ── 路由 ──
     def do_GET(self):
         path = urlsplit(self.path).path
-        if path == "/candyjar":                       # 罐子页开罐时拉一次
-            st = candyjar._load()
-            jar = candyjar._ensure_jar(st)
-            candyjar._prune(st)
-            candyjar._write(st)
-            return self._json({"jar": jar, "dex": st.get("dex", {}), "courage": st.get("courage", {}),
-                               "reserve": st.get("reserve", []), "active": candyjar.status()})
+        if path == "/candyjar":                       # 罐子页开罐时拉一次（没开罐时 jar=None + choose 五罐候选）
+            return self._json(candyjar.view(who="user"))
         if path == "/candyjar/context":               # 给 AI 的那段话（无药效时为空）
             return self._text(candyjar.context_line())
         if path == "/candyjar/status":                # 结构化药效快照
@@ -96,6 +91,9 @@ class Handler(SimpleHTTPRequestHandler):
                 return self._json({"ok": True, "text": text, "active": candyjar.status(),
                                    "courage": st.get("courage", {}), "reserve": st.get("reserve", []),
                                    "dex": st.get("dex", {})})
+            if path == "/candyjar/choose":            # 每天第一次打开：从五罐里选一罐
+                r = candyjar.choose(self._body().get("jar"), who="user")
+                return self._json(r, 400 if r.get("error") else 200)
             if path == "/candyjar/buy":
                 b = self._body()
                 r = candyjar.buy(candy_id=b.get("id"), dest=(b.get("dest") or "reserve"), who="user")
