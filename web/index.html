@@ -1127,7 +1127,7 @@ Object.assign(key.shadow.camera,{left:-16,right:16,top:16,bottom:-16});
 scene.add(key);
 const warm=new T.PointLight(0xffcf9a,2.2,14,2); warm.position.set(0,4.6,0); scene.add(warm);   // 物理光照单位是烛光,别抄旧版数值——14 就是罐里塞灯泡
 
-const JAR_NAMES=['','宿命论','蝴蝶效应','桃花劫','薛定谔','世界线收束'];
+const JAR_NAMES=['','宿命论','维特根斯坦','桃花劫','庄周梦蝶','世界线收束'];   // 兜底：真名字看 jarName()（图鉴 _meta.jars[n].name）
 const _day=new Date(); const _dayStr=_day.getFullYear()+'-'+(_day.getMonth()+1)+'-'+_day.getDate();
 let _h=0; for(const ch of _dayStr) _h=(_h*31+ch.charCodeAt(0))>>>0;
 let curJar=_h%5+1;
@@ -1203,12 +1203,13 @@ const shine=new T.Mesh(glassGeo,mkShine(1.6)); shine.renderOrder=23; jar.add(shi
 const lidShine=new T.Mesh(lidMesh.geometry,mkShine(1.6)); lidShine.renderOrder=24; lid.add(lidShine);
 
 // ── 罐身标签(mamo 参考糖果店贴纸;先做一版试效果,样式定了再换她的设计) ──
-const JAR_LABEL_TEXT={1:['宿命论','Fatalism'],2:['蝴蝶效应','Butterfly'],
-  3:['桃花劫','Amour Fatal'],4:['薛定谔','Schrödinger'],
+const JAR_LABEL_TEXT={1:['宿命论','Fatalism'],2:['维特根斯坦','Wittgenstein'],
+  3:['桃花劫','Amour Fatal'],4:['庄周梦蝶','Le Papillon'],
   5:['世界线收束','Convergence'],
   mine:['我的储藏罐','Ma Réserve']};   // 储藏罐有自己的立牌,不跟今日罐走
 function makeLabelTex(){
-  const t=viewMine?JAR_LABEL_TEXT.mine:(JAR_LABEL_TEXT[curJar]||JAR_LABEL_TEXT[1]);
+  const lb=viewMine?JAR_LABEL_TEXT.mine:(JAR_LABEL_TEXT[curJar]||JAR_LABEL_TEXT[1]);
+  const t=viewMine?lb:[jarName(curJar)||lb[0],lb[1]];   // 中文名以图鉴为准，外文副标留在这儿（花体主标）
   const W=640,H=360,cn=document.createElement('canvas'); cn.width=W; cn.height=H;
   const x=cn.getContext('2d');
   // 满幅不透明(带 alpha 会和后方玻璃混排出一圈方框);上亮下暗的纸面渐变(mamo)
@@ -1218,7 +1219,7 @@ function makeLabelTex(){
   x.strokeStyle='rgba(150,120,88,.5)'; x.lineWidth=4; x.strokeRect(20,20,W-40,H-40);
   x.strokeStyle='rgba(150,120,88,.28)'; x.lineWidth=1.6; x.strokeRect(32,32,W-64,H-64);
   x.textAlign='center';
-  // 英文花体主标:按牌宽自动收字号,长名(Schrödinger/Convergence)不再出框
+  // 英文花体主标:按牌宽自动收字号,长名(Wittgenstein/Convergence)不再出框
   const maxW=W-110;
   let fs=104;
   x.font='italic 700 '+fs+'px "Snell Roundhand","Apple Chancery","Segoe Script","Brush Script MT",cursive';
@@ -2515,13 +2516,14 @@ function snapCandy(entry){
   const url=snapR.domElement.toDataURL();
   mesh.material.dispose(); snapCache[entry.id]=url; return url;
 }
-const DEX_TABS=[[1,'宿命论'],[2,'蝴蝶效应'],[3,'桃花劫'],[4,'薛定谔'],[0,'墨菲定律']];   // 会出事的糖,归墨菲管
+const DEX_TABS=[[1,'宿命论'],[2,'维特根斯坦'],[3,'桃花劫'],[4,'庄周梦蝶'],[0,'墨菲定律']];   // 会出事的糖,归墨菲管；名字同样以图鉴为准(dexName)
 let dexTab=1;
 function mmJarsOf(entry){ const hex=Object.keys(MM_ID).find(h=>MM_ID[h]===entry.id);
   return hex?(MM_JARS[hex]||[1]):[1]; }
 function renderDex(){
   const tabs=document.getElementById('dexTabs'); tabs.innerHTML='';
-  for(const [j,name] of DEX_TABS){
+  for(const [j,fallback] of DEX_TABS){
+    const name=dexName(j,fallback);
     const b=document.createElement('button'); b.textContent=name;
     if(j===dexTab) b.classList.add('on');   // 选中:黑底白字,字下一枚宝石(::after)
     b.onclick=()=>{ dexTab=j; renderDex(); };
@@ -2562,7 +2564,7 @@ function showDexDetail(entry){
   document.getElementById('ddTaste').textContent='它尝起来'+entry.taste;
   document.getElementById('ddReveal').textContent=endDot(entry.reveal);   // 只留判词:演法只注入 AI,图鉴永不展示(演出保鲜,mamo 2026-09-04)
   document.getElementById('ddCount').textContent='已吃 '+(dexCount[entry.id]||0)+' 次';
-  const jarName=(DEX_TABS.find(x=>x[0]===(entry.jar||0))||[0,'？'])[1];
+  const jarLabel=dexName(entry.jar||0,(DEX_TABS.find(x=>x[0]===(entry.jar||0))||[0,'？'])[1]);
   document.getElementById('ddJar').textContent=jarName;   // 胶囊①:这颗属于哪一罐
   const frame=document.getElementById('ddFrame');
   if(ddR) releaseDD();   // 同一个 canvas 只能挂一个 WebGL 上下文，新建前必须先还
@@ -2650,7 +2652,7 @@ updCourage();
 function setJarText(){
   const el=document.getElementById('todayJarBtn');
   el.querySelector('span').textContent=picking?'请选择':'今日';
-  document.getElementById('todayArcText').textContent=picking?'今日的糖罐':(JAR_NAMES[curJar]+'之罐');   // 两侧不加点(mamo)；选罐态照 Figma 牌子文案
+  document.getElementById('todayArcText').textContent=picking?'今日的糖罐':(jarName(curJar)+'之罐');   // 两侧不加点(mamo)；选罐态照 Figma 牌子文案
 }
 setJarText();
 // 罐子页自己也每分钟对一次后端账本(mamo:点进 jar 里也应该看到倒计时)
@@ -2659,15 +2661,21 @@ setInterval(()=>{ fetch('/candyjar').then(r=>r.ok?r.json():null).then(sv=>{
 // 样机后门:点今日罐名循环切罐(正式版删——mamo 要看罐⑤混合效果)
 // 罐子判词以图鉴数据为准（candies.json 的 _meta.jars[n].line）——mamo 在总账里改，落库即生效。
 // 2026-09-04 之前硬编码在这里，她改了总账 PWA 却还是旧的。下面这份只当图鉴没加载出来时的兜底。
+// 罐名同判词，以图鉴数据为准（_meta.jars[n].name）；下面那两张硬编码表只是兜底。
+function jarName(k){
+  const m=CATALOG&&CATALOG._meta&&CATALOG._meta.jars&&CATALOG._meta.jars[k];
+  return (m&&m.name)||JAR_NAMES[k]||'';
+}
+function dexName(j,fallback){ return j===0?fallback:(jarName(j)||fallback); }   // 罐⓪墨菲=机制糖，图鉴里没有它的条目
 function jarLine(k){
   const m=CATALOG&&CATALOG._meta&&CATALOG._meta.jars&&CATALOG._meta.jars[k];
   return (m&&m.line)||JAR_LINES[k]||'';
 }
 const JAR_LINES={   // 兜底文案（图鉴拿不到时才用）
   1:'闭着眼拿了三次，三次都是它。这罐子有内幕。',
-  2:'个头最小的那颗，案底最厚。别问我怎么知道的。',
+  2:'我语言的界限，就是我世界的界限。',
   3:'这一罐颜色个个眉目含情。……糖冲我含什么情？不妙，撤。',   // 桃花劫(mamo 在总账里写的;原先误挂墨菲判词)
-  4:'不打开就都是无辜的——这套说辞它们用了很多年。',
+  4:'不知周之梦为蝴蝶与，蝴蝶之梦为周与。',
   5:'查了一圈，所有线索都指向同一颗。烦。',
   mine:'都是你自己带回来的，吃吧，每一颗都花了钱。'   // mamo 2026-09-05 定稿
 };
@@ -2707,7 +2715,7 @@ document.getElementById('pickPrev').onclick=()=>pickStep(-1);
 document.getElementById('pickNext').onclick=()=>pickStep(1);
 function askPick(){   // 二次确认：沿用商店买糖那张确认卡（mamo 2026-09-05 拍）
   scPending=null;
-  scOpen('就选「'+JAR_NAMES[curJar]+'之罐」？','今天只能开这一罐，明天零点才换。','就它了',true);
+  scOpen('就选「'+jarName(curJar)+'之罐」？','今天只能开这一罐，明天零点才换。','就它了',true);
   scChoose=true;
 }
 let scChoose=false;

@@ -84,7 +84,9 @@ START_COURAGE = 12          # 起始勇气（mamo 2026-09-04：7 太紧，好奇
 OVERRIDE_GRACE_MIN = 10     # 旧药效只剩这么多分钟以内时再吃，不算硬顶（不扣 2）
 
 
-JAR_NAMES = {1: "宿命论", 2: "蝴蝶效应", 3: "桃花劫", 4: "薛定谔", 5: "世界线收束"}
+JAR_NAMES = {1: "宿命论", 2: "维特根斯坦", 3: "桃花劫", 4: "庄周梦蝶", 5: "世界线收束"}
+# ↑ 只当图鉴读不出来时的兜底；真名字看 jar_name()——mamo 在总账里改，落 _meta.jars[n].name（2026-09-05 改名：
+#   罐②蝴蝶效应→维特根斯坦、罐④薛定谔→庄周梦蝶，判词同改）。
 
 
 def _jar_of_day(day):
@@ -103,6 +105,12 @@ def _cat_fp():
     return hashlib.md5(_CATALOG_PATH.read_bytes()).hexdigest()[:8]
 
 
+def jar_name(n):
+    """罐名以图鉴为准（`_meta.jars[n].name`），改名只动数据。"""
+    m = (_catalog().get("_meta", {}).get("jars", {}) or {}).get(str(n)) or {}
+    return m.get("name") or JAR_NAMES.get(n, "")
+
+
 def _roll_jar(day, jar=None):
     """当日罐：日期+罐号做种子，从图鉴里确定性摇 20 颗（同一天同一罐）。
     jar 缺省按日期轮（老规矩，测试与兜底用）；玩家选罐后传罐号（2026-09-05 起开罐权在玩家手里）。"""
@@ -117,7 +125,7 @@ def _roll_jar(day, jar=None):
     picks = [rng.choice(pool)["id"] for _ in range(n_eff)]
     picks += [rng.choice(mech)["id"] for _ in range(n_mech)]   # 机制糖混进来，外观无从分辨
     rng.shuffle(picks)
-    return {"day": day, "jar": jar, "name": JAR_NAMES[jar], "cat": _cat_fp(),
+    return {"day": day, "jar": jar, "name": jar_name(jar), "cat": _cat_fp(),
             "candies": [{"i": i, "id": cid} for i, cid in enumerate(picks)]}
 
 
