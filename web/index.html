@@ -2565,7 +2565,7 @@ function showDexDetail(entry){
   document.getElementById('ddReveal').textContent=endDot(entry.reveal);   // 只留判词:演法只注入 AI,图鉴永不展示(演出保鲜,mamo 2026-09-04)
   document.getElementById('ddCount').textContent='已吃 '+(dexCount[entry.id]||0)+' 次';
   const jarLabel=dexName(entry.jar||0,(DEX_TABS.find(x=>x[0]===(entry.jar||0))||[0,'？'])[1]);
-  document.getElementById('ddJar').textContent=jarName;   // 胶囊①:这颗属于哪一罐
+  document.getElementById('ddJar').textContent=jarLabel;   // 胶囊①:这颗属于哪一罐（写成 jarName 会把函数源码印上去——2026-09-05 mamo 截图报的）
   const frame=document.getElementById('ddFrame');
   if(ddR) releaseDD();   // 同一个 canvas 只能挂一个 WebGL 上下文，新建前必须先还
   frame.classList.remove('preview-ready');
