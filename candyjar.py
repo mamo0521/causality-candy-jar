@@ -163,7 +163,7 @@ def _ensure_jar(st):
         return None
     if j.get("cat") != _cat_fp():   # 图鉴改了就按同一罐号重摇，别让旧分类的糖留在罐里
         st["jar"] = _roll_jar(day, j.get("jar"))
-        _attach_extras(st, st["jar"])
+    _attach_extras(st, st["jar"])   # 幂等：补挂自己罐的、请走别罐的（09-09 自愈老存档）
     return st["jar"]
 
 
@@ -323,14 +323,40 @@ def mystery_price(st):
     return PRICE_LADDER[min(n, len(PRICE_LADDER) - 1)]
 
 
+def _home_jar(cid, fallback):
+    """买来的糖归**自己的**罐：桃花劫的糖就该在桃花劫等你（mamo 2026-09-09——
+    之前按"买时开着的罐"存，一颗树莓红在庄周梦蝶里站了四天）。机制糖(jar 0)没有家，跟买时的罐。"""
+    c = _find(cid)
+    j = (c or {}).get("jar") or 0
+    return int(j) if j else int(fallback)
+
+
+def _normalize_extras(st):
+    """把 extras 按糖的归属罐归位（老存档 09-05~09-09 是按买时的罐存的，读到就搬家）。"""
+    out = {}
+    for k, ids in (st.get("extras") or {}).items():
+        for cid in ids:
+            out.setdefault(str(_home_jar(cid, k)), []).append(cid)
+    st["extras"] = out
+    return out
+
+
 def _attach_extras(st, jar):
-    """把买进这一罐、还没吃掉的糖挂回罐里——罐子每天重摇，买来的不能跟着蒸发（mamo 2026-09-05）。
-    按罐号存，所以将来玩家自己选罐（另一窗口在做）也能在那罐里找到它们。"""
-    ids = (st.get("extras") or {}).get(str(jar["jar"])) or []
+    """把买来、还没吃掉的糖挂回**它自己那罐**——罐子每天重摇，买来的不能跟着蒸发（mamo 2026-09-05）；
+    罐⑤世界线收束本来就混装全部，所以外来糖也全挂上。"""
+    ex = _normalize_extras(st)
+    n = int(jar["jar"])
+    ids = [cid for v in ex.values() for cid in v] if n == 5 else list(ex.get(str(n)) or [])
+    have = {x["id"] for x in jar["candies"] if x.get("bought")}
     nxt = max([x["i"] for x in jar["candies"]], default=-1) + 1
     for cid in ids:
+        if cid in have:
+            continue
         jar["candies"].append({"i": nxt, "id": cid, "bought": True})
-        nxt += 1
+        have.add(cid); nxt += 1
+    # 自愈：老逻辑把别罐的糖塞进过当前罐（bought 标记），不是本罐（也不是罐⑤）的请出去等自己的罐
+    if n != 5:
+        jar["candies"] = [x for x in jar["candies"] if not (x.get("bought") and _home_jar(x["id"], n) != n)]
 
 
 def buy(candy_id, dest="reserve", price=None, who="user"):
@@ -354,9 +380,11 @@ def buy(candy_id, dest="reserve", price=None, who="user"):
     if dest == "today":
         if jar is None:
             return {"error": "今天还没开罐，神秘柜的糖没处放。"}
-        nxt = max([x["i"] for x in jar["candies"]], default=-1) + 1
-        jar["candies"].append({"i": nxt, "id": candy_id, "bought": True})
-        st.setdefault("extras", {}).setdefault(str(jar["jar"]), []).append(candy_id)   # 跨天不丢
+        home = _home_jar(candy_id, jar["jar"])
+        st.setdefault("extras", {}).setdefault(str(home), []).append(candy_id)   # 跨天不丢，记在它自己那罐名下
+        if home == int(jar["jar"]) or int(jar["jar"]) == 5:   # 本罐的（或今天是混装的罐⑤）：立刻混进今日罐
+            nxt = max([x["i"] for x in jar["candies"]], default=-1) + 1
+            jar["candies"].append({"i": nxt, "id": candy_id, "bought": True})
         _buys_today(st)["n"] += 1                                                      # 阶梯价往上走一档
     else:
         _reserve(st, who).append(candy_id)
@@ -365,7 +393,10 @@ def buy(candy_id, dest="reserve", price=None, who="user"):
     st["log"].append({"t": _now(), "buy": candy_id, "dest": dest, "price": price, "who": who})
     st["log"] = st["log"][-200:]   # 购买也进流水:09-04 储藏罐蒸发事故就是因为没流水,丢了几颗都查不出
     _write(st)
-    return {"ok": True, "courage": st["courage"], "reserve": _reserve(st, who),
+    placed = None
+    if dest == "today":
+        placed = "today" if (home == int(jar["jar"]) or int(jar["jar"]) == 5) else jar_name(home)
+    return {"ok": True, "courage": st["courage"], "reserve": _reserve(st, who), "placed": placed,
             "jar": jar, "mystery_price": mystery_price(st), "once_used": once_used(st, who)}
 
 
@@ -491,8 +522,8 @@ def eat(index=None, who="ai", target=None, message=None, source="jar", candy_id=
                 return f"没有编号 {index} 的糖了（可能已经被吃掉）。看看 look 里还剩哪些。"
             pick = hit[0]
         jar["candies"] = [x for x in left if x is not pick]
-        if pick.get("bought"):   # 买来的吃掉了，跨天记录也去掉一颗
-            ex = (st.get("extras") or {}).get(str(jar["jar"])) or []
+        if pick.get("bought"):   # 买来的吃掉了，跨天记录也去掉一颗（记在它自己那罐名下）
+            ex = _normalize_extras(st).get(str(_home_jar(pick["id"], jar["jar"]))) or []
             if pick["id"] in ex:
                 ex.remove(pick["id"])
 

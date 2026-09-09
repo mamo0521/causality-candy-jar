@@ -2388,7 +2388,8 @@ function serverBuy(c,dest,price){
       if(dest==='today'){ if(!viewMine) fillJar(); }
       else if(viewMine) fillJar();
       // 原弹窗原地变「购买完成」态:说明行撤掉,独一枚橙红按钮(mamo 2026-09-02)
-      scOpen(dest==='today'?'':'「'+fullName(c)+'」','','完成购买',false,dest==='today'?c:null);
+      const away=(dest==='today'&&res.placed&&res.placed!=='today')?res.placed:'';   // 后端说它回别的罐等着了
+      scOpen(dest==='today'?'':'「'+fullName(c)+'」',away?'已收进「'+away+'之罐」，那天开罐再见。':'','完成购买',false,dest==='today'?c:null);
     }).catch(()=>{ ok.disabled=false; scClose(); shopToast('联不上女巫'); });
 }
 function tabGo(which,btn){
@@ -2412,11 +2413,19 @@ function scOpen(title,desc,okText,confirm,previewEntry){
   document.getElementById('shopConfirm').classList.add('show');
 }
 function scClose(){ scPending=null; scChoose=false; document.getElementById('shopConfirm').classList.remove('show'); }
+// 神秘柜补货卖的「别罐的糖」买了不进今天这罐——回它自己那罐等着（mamo 2026-09-09：桃花劫的树莓红
+// 在庄周梦蝶里站了四天）。确认卡把去向说清楚，别让人以为买了没到货。
+function foreignJarOf(c){
+  const today=(SERVER&&SERVER.jar&&SERVER.jar.jar)||curJar;
+  return (c&&c.jar>0&&today!==5&&c.jar!==today)?c.jar:0;
+}
 function askBuy(c,dest,price){
   scPending={c,dest,price};
+  const fj=dest==='today'?foreignJarOf(c):0;
   scOpen(dest==='today'?'':'「'+fullName(c)+'」',
     (dest==='today'
-      ?'花 '+price+' ✦ 勇气把这颗新品种混进今日罐——\n开出来是什么，吃到才知道。'
+      ?(fj?'花 '+price+' ✦ 勇气买下这颗别罐的新品种——\n它会回「'+jarName(fj)+'之罐」等你，那天开罐再见。'
+          :'花 '+price+' ✦ 勇气把这颗新品种混进今日罐——\n开出来是什么，吃到才知道。')
       :'花 '+price+' ✦ 勇气把这颗买回「我的储藏罐」，\n想吃的时候自己去拿。'),
     '确定购买',true,dest==='today'?c:null);
 }
