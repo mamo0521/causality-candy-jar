@@ -65,7 +65,7 @@ def _blank():
     #（2026-09-04 实锤:reserve 没登记,买进储藏罐的糖在下一次任何读档时蒸发,
     #  而 status() 每轮都读+写,等于买完几秒就没了——mamo 报的"储藏罐吃糖没倒计时"根在这）。
     return {"dex": {}, "courage": {"user": START_COURAGE, "ai": START_COURAGE}, "active": [],
-            "jar": None, "pending": {}, "log": [], "reserve": {"user": [], "ai": []},
+            "jar": None, "pending": {}, "log": [], "days": {}, "reserve": {"user": [], "ai": []},
             "shield": {},
             "buys": {},      # 神秘柜当天已买几颗（阶梯价用）：{"day": ..., "n": k}
             "extras": {},    # 买进各罐、还没吃掉的糖：{"3": ["id", ...]}——跨天不丢，跟着罐号走
@@ -458,6 +458,33 @@ def _shield_left(st, who):
     return max(0, int(left + 0.999))
 
 
+def _log_candy(st, entry):
+    """吃糖/喂糖记一笔。流水 `log` 只留最近 200 条（防存档变大），所以另记一份**按天的次数** `days`，
+    永久留着——房间日历要显示"那天吃了几颗糖"（mamo 2026-09-20：糖罐流水要长期留，进日历）。"""
+    days = st.setdefault("days", {})
+    for e in st.get("log") or []:        # 还留在流水里、但 days 没记过的老日子：趁流水没滚掉先补上
+        od = str(e.get("t") or "")[:10]
+        if e.get("candy") and len(od) == 10 and od not in days:
+            days[od] = sum(1 for x in st["log"] if x.get("candy") and str(x.get("t") or "")[:10] == od)
+    st["log"].append(entry)
+    d = str(entry.get("t") or "")[:10]
+    if len(d) == 10:
+        days[d] = int(days.get(d) or 0) + 1
+
+
+def candy_days():
+    """{日期: 吃糖/喂糖次数}。`days` 是 2026-09-20 才开始记的，更早的从还留着的流水里补。只读。"""
+    st = _load()
+    out = {}
+    for e in st.get("log") or []:
+        d = str(e.get("t") or "")[:10]
+        if e.get("candy") and len(d) == 10:
+            out[d] = out.get(d, 0) + 1
+    for d, n in (st.get("days") or {}).items():
+        out[d] = max(out.get(d, 0), int(n or 0))
+    return out
+
+
 def _apply(st, cid, target, frm=None):
     c = _find(cid)
     # 护身符：十分钟内的第一颗**效果糖**直接失效，盾随之用掉（机制糖不吃盾）。
@@ -465,7 +492,7 @@ def _apply(st, cid, target, frm=None):
     if c["jar"] > 0 and _shield_left(st, target):
         st.setdefault("shield", {}).pop(target, None)
         st["dex"][cid] = st["dex"].get(cid, 0) + 1
-        st["log"].append({"t": _now(), "candy": cid, "target": target, "from": frm,
+        _log_candy(st, {"t": _now(), "candy": cid, "target": target, "from": frm,
                           "mins": 0, "blocked": True})
         return c, -1                      # -1 = 被护身符挡下（0 是"本来就没时长"）
     rng = random.Random(f"{_now()}|{cid}|{target}")
@@ -475,7 +502,7 @@ def _apply(st, cid, target, frm=None):
         st.setdefault("shield", {})[target] = (
             _now_dt() + timedelta(minutes=mins or 10)).isoformat(timespec="seconds")
         st["dex"][cid] = st["dex"].get(cid, 0) + 1
-        st["log"].append({"t": _now(), "candy": cid, "target": target, "from": frm, "mins": 0})
+        _log_candy(st, {"t": _now(), "candy": cid, "target": target, "from": frm, "mins": 0})
         return c, 0
     if st.get("pending", {}).get(target) == "double" and mins:
         mins *= 2
@@ -486,7 +513,7 @@ def _apply(st, cid, target, frm=None):
                              "started": _now(),
                              "expires": (_now_dt() + timedelta(minutes=mins)).isoformat()})
     st["dex"][cid] = st["dex"].get(cid, 0) + 1
-    st["log"].append({"t": _now(), "candy": cid, "target": target, "from": frm, "mins": mins})
+    _log_candy(st, {"t": _now(), "candy": cid, "target": target, "from": frm, "mins": mins})
     st["log"] = st["log"][-200:]
     return c, mins
 
