@@ -1744,6 +1744,7 @@ function setPickCardMode(){
   card.classList.remove('mine-detail');
 }
 function showCard(c){
+  jarBubbleHide();   // 判词气泡还在飘就先退场：选糖卡和被拎起的糖会把它盖住（mamo 2026-10-07 试玩版截图）
   if(picked&&picked!==c){ sendHome(picked); if(shakeT<0) shakeT=.35; }   // 连点第二颗:上一颗落回+罐子晃一下
                                                                           // (.85 起播衰减到只剩 6% 幅度,mamo 说几乎看不见;.35≈32% 幅度)
   picked=c;
@@ -2470,6 +2471,12 @@ document.getElementById('mineBtn').onclick=()=>{
 updMineBtn();
 // 吊牌的吊落摆动只在**标题整包从上方落下**时播（入场那一次）。
 // 关卡片时不再单独重播——只有吊牌动、其余标题不动，反而怪（mamo 2026-09-01）。
+function jarBubbleHide(){
+  const t=document.getElementById('jarBubble');
+  if(!t.classList.contains('on')) return;
+  clearTimeout(t._h); t.classList.remove('on'); t.classList.add('out');
+  setTimeout(()=>t.classList.remove('out'),450);
+}
 function jarBubble(msg,hold){
   const t=document.getElementById('jarBubble');
   t.textContent=msg; t.classList.add('on');
