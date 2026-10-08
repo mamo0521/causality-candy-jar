@@ -10,7 +10,9 @@
   const KEY = 'candyjar_demo_v1';
   const START_COURAGE = 12, GRACE_MIN = 10;
   const PRICES = { reserve: 5 }, LADDER = [3, 3, 4, 4, 5, 5], ONCE_A_DAY = ['mm_gold'];
-  const JAR_NAMES = { 1: '宿命论', 2: '蝴蝶效应', 3: '桃花劫', 4: '薛定谔', 5: '世界线收束' };
+  // 罐名以图鉴数据为准（_meta.jars[n].name）；下面这张表只是图鉴还没拉到时的兜底。
+  const JAR_FALLBACK = { 1: '宿命论', 2: '维特根斯坦', 3: '桃花劫', 4: '庄周梦蝶', 5: '世界线收束' };
+  const jarName = n => ((CAT && CAT._meta && CAT._meta.jars && CAT._meta.jars[n] && CAT._meta.jars[n].name) || JAR_FALLBACK[n] || '');
   let CAT = null;                                   // 图鉴（页面自己会拉，这里也拉一份）
 
   const today = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
@@ -37,7 +39,7 @@
     for (let i = 0; i < nEff; i++) ids.push(pick(pool).id);
     for (let i = 0; i < nMech; i++) ids.push(pick(mech).id);
     for (let i = ids.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [ids[i], ids[j]] = [ids[j], ids[i]]; }
-    return { day, jar: n, name: JAR_NAMES[n], candies: ids.map((id, i) => ({ i, id })) };
+    return { day, jar: n, name: jarName(n), candies: ids.map((id, i) => ({ i, id })) };
   }
   function attachExtras(st, jar) {
     const ids = (st.extras || {})[String(jar.jar)] || [];
@@ -179,7 +181,7 @@
     const st = load();
     if (ensureJar(st)) return { error: '今天已经开过罐了，明天零点再选。' };
     const n = parseInt(body.jar, 10);
-    if (!JAR_NAMES[n]) return { error: '没有这一罐。' };
+    if (!JAR_FALLBACK[n]) return { error: '没有这一罐。' };
     st.jar = rollJar(today(), n); attachExtras(st, st.jar); save(st);
     return { ok: true, jar: st.jar };
   }

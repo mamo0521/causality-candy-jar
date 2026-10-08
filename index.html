@@ -1009,8 +1009,8 @@ window.onerror=function(m,src,l,c){ var d=document.createElement('div');
   d.textContent='ERR '+m+' @'+l+':'+c; document.body.appendChild(d); };
 </script>
 <script type="module">
-import * as T from './three-0160.module.min.js?v=202609042349';
-import { OrbitControls } from './OrbitControls-0160.js?v=202609042349';
+import * as T from './three-0160.module.min.js?v=202610072244';
+import { OrbitControls } from './OrbitControls-0160.js?v=202610072244';
 // r160 色彩管理默认开:十六进制色自动按 sRGB 收,不再手动 convertSRGBToLinear(转两次会变暗)
 // 左上返回=关闭。**绑定放在最前面**:原来挂在文件末尾,上游任何一行抛错它就永远绑不上
 // (mamo 2026-08-31 连报两次"点了没反应")。按钮本身不会被替换，只绑定一次，避免 click 冒泡后重复返回。
@@ -1331,7 +1331,7 @@ fetch('./assets/candyjar/candies.json?v='+Date.now()).then(r=>r.json()).then(d=>
 function applyServerEffects(list){
   const arr=list||[];
   const pick=t=>{
-    const a=arr.filter(x=>x.target===t&&x.minutes_left>0)[0];   // 0 分钟=只剩对话轮保底,UI 不挂
+    const a=arr.filter(x=>x.target===t&&x.minutes_left>0)[0];   // 到点就是到点（mamo 2026-09-05：余韵整套删了）
     if(!a) return null;
     const cat=CATALOG&&CATALOG.candies.find(c=>c.effect===a.effect);
     return cat?{cat, until:Date.now()+a.minutes_left*60000}:null;
@@ -1746,6 +1746,7 @@ function setPickCardMode(){
   card.classList.remove('mine-detail');
 }
 function showCard(c){
+  jarBubbleHide();   // 判词气泡还在飘就先退场：选糖卡和被拎起的糖会把它盖住（mamo 2026-10-07 试玩版截图）
   if(picked&&picked!==c){ sendHome(picked); if(shakeT<0) shakeT=.35; }   // 连点第二颗:上一颗落回+罐子晃一下
                                                                           // (.85 起播衰减到只剩 6% 幅度,mamo 说几乎看不见;.35≈32% 幅度)
   picked=c;
@@ -1940,11 +1941,17 @@ function fxTick(){
     }
   }
 }
-let fxdtCur=null;   // 详情卡正在看的那份药效（开着时每秒刷新剩余时间）
+let fxdtCur=null, fxdtWho='';   // 详情卡正在看的那份药效（开着时每秒刷新剩余时间）
 function openFxDetail(fx,who){
-  fxdtCur=fx;
-  const cat=fx.cat;
   document.getElementById('fxdtCard').classList.remove('settled');
+  renderFxDetail(fx,who);
+  document.getElementById('fxdt').classList.add('show');
+}
+// 卡片内容单独一函数：药效被顶掉换新时原地重画,不重播进场动画
+// （mamo 2026-09-05 报"吃错药了"：卡片开着的时候他又吃了一颗,牌子换了、卡片还停在旧那颗）
+function renderFxDetail(fx,who){
+  fxdtCur=fx; fxdtWho=who;
+  const cat=fx.cat;
   document.getElementById('fxdtName').textContent='「'+fullName(cat)+'」';
   document.getElementById('fxdtTags').className='tags'+(who==='Ta'?' ta':'');
   document.getElementById('fxdtTags').querySelector('.who').textContent=(who==='Ta'?'Ta 的':'你 的');   // Ta 字距 0,靠这个空格分开
@@ -1953,12 +1960,15 @@ function openFxDetail(fx,who){
   if(cat.perform){ const b=document.createElement('p'); b.textContent=cat.perform; fb.append(b); }
   if(!cat.reveal&&!cat.perform) fb.textContent='';
   fxdtSync();
-  document.getElementById('fxdt').classList.add('show');
 }
 function fxdtSync(){
   if(!fxdtCur) return;
   const box=document.getElementById('fxdt');
   if(!box.classList.contains('show')) return;
+  const live=(fxdtWho==='Ta')?fxTa:fxMe;   // 账本里这一方此刻真正的药效
+  if(!live){ box.classList.remove('show'); fxdtCur=null; return; }   // 退了就收卡
+  if(live.cat!==fxdtCur.cat){ renderFxDetail(live,fxdtWho); return; }   // 顶旧换新：卡片跟着换
+  fxdtCur=live;   // 同一颗：只把最新的到期时间接过来（别重画，不然她正在读的演法会跳回顶部）
   const left=fxdtCur.until-Date.now();
   if(left<=0){ box.classList.remove('show'); fxdtCur=null; return; }
   const te=document.getElementById('fxdtTime'); te.className='tnum'; te.innerHTML=tnumHTML(fxFmt(left));
@@ -2381,7 +2391,8 @@ function serverBuy(c,dest,price){
       if(dest==='today'){ if(!viewMine) fillJar(); }
       else if(viewMine) fillJar();
       // 原弹窗原地变「购买完成」态:说明行撤掉,独一枚橙红按钮(mamo 2026-09-02)
-      scOpen(dest==='today'?'':'「'+fullName(c)+'」','','完成购买',false,dest==='today'?c:null);
+      const away=(dest==='today'&&res.placed&&res.placed!=='today')?res.placed:'';   // 后端说它回别的罐等着了
+      scOpen(dest==='today'?'':'「'+fullName(c)+'」',away?'已收进「'+away+'之罐」，那天开罐再见。':'','完成购买',false,dest==='today'?c:null);
     }).catch(()=>{ ok.disabled=false; scClose(); shopToast('联不上女巫'); });
 }
 function tabGo(which,btn){
@@ -2405,11 +2416,19 @@ function scOpen(title,desc,okText,confirm,previewEntry){
   document.getElementById('shopConfirm').classList.add('show');
 }
 function scClose(){ scPending=null; scChoose=false; document.getElementById('shopConfirm').classList.remove('show'); }
+// 神秘柜补货卖的「别罐的糖」买了不进今天这罐——回它自己那罐等着（mamo 2026-09-09：桃花劫的树莓红
+// 在庄周梦蝶里站了四天）。确认卡把去向说清楚，别让人以为买了没到货。
+function foreignJarOf(c){
+  const today=(SERVER&&SERVER.jar&&SERVER.jar.jar)||curJar;
+  return (c&&c.jar>0&&today!==5&&c.jar!==today)?c.jar:0;
+}
 function askBuy(c,dest,price){
   scPending={c,dest,price};
+  const fj=dest==='today'?foreignJarOf(c):0;
   scOpen(dest==='today'?'':'「'+fullName(c)+'」',
     (dest==='today'
-      ?'花 '+price+' ✦ 勇气把这颗新品种混进今日罐——\n开出来是什么，吃到才知道。'
+      ?(fj?'花 '+price+' ✦ 勇气买下这颗别罐的新品种——\n它会回「'+jarName(fj)+'之罐」等你，那天开罐再见。'
+          :'花 '+price+' ✦ 勇气把这颗新品种混进今日罐——\n开出来是什么，吃到才知道。')
       :'花 '+price+' ✦ 勇气把这颗买回「我的储藏罐」，\n想吃的时候自己去拿。'),
     '确定购买',true,dest==='today'?c:null);
 }
@@ -2454,6 +2473,12 @@ document.getElementById('mineBtn').onclick=()=>{
 updMineBtn();
 // 吊牌的吊落摆动只在**标题整包从上方落下**时播（入场那一次）。
 // 关卡片时不再单独重播——只有吊牌动、其余标题不动，反而怪（mamo 2026-09-01）。
+function jarBubbleHide(){
+  const t=document.getElementById('jarBubble');
+  if(!t.classList.contains('on')) return;
+  clearTimeout(t._h); t.classList.remove('on'); t.classList.add('out');
+  setTimeout(()=>t.classList.remove('out'),450);
+}
 function jarBubble(msg,hold){
   const t=document.getElementById('jarBubble');
   t.textContent=msg; t.classList.add('on');
