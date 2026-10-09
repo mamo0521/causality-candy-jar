@@ -1,7 +1,7 @@
 # 因果律软糖罐 · Causality Candy Jar
 
 > 一罐整蛊软糖，和你的 AI 一起吃。
-> 糖长什么样看得见，是什么糖得吃下去才知道；药效带真实倒计时，谁吃了什么都记在同一本账上，赖不掉。
+> 小心，它尝起来和看起来一点关系没有；药效带真实倒计时；谁吃了糖都赖不掉。
 >
 > A jar of prank gummies to share with your AI companion. You can see what a candy looks like —
 > what it *does* only shows up after you swallow it. Effects run on a real clock and are written to a ledger.
@@ -28,7 +28,7 @@
 
 ---
 
-### ⓪ 网页版（不用装）
+### ⓪ MCP网页版
 
 打开 **https://candy.mamogo.uk** ，点「开一罐」，把给你的**钥匙**存好（钥匙就是这一罐，丢了找不回来）。然后让 Ta 坐进来：
 
