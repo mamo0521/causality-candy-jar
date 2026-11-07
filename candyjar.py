@@ -499,8 +499,12 @@ def _apply(st, cid, target, frm=None):
     lo, hi = c.get("dur", [0, 0])
     mins = 0 if not hi else (lo if lo == hi else rng.randint(lo, hi))
     if cid == "mm_white":                 # 护身符自己不是药效：挂盾，不占药效牌
+        base = mins or 10
+        if st.get("pending", {}).get(target) == "double":   # 加倍豆 + 护体豆（D68，mamo 2026-11-07 拍）：护体吃掉加倍标记，盾变 20 分钟
+            base *= 2
+            st["pending"].pop(target, None)
         st.setdefault("shield", {})[target] = (
-            _now_dt() + timedelta(minutes=mins or 10)).isoformat(timespec="seconds")
+            _now_dt() + timedelta(minutes=base)).isoformat(timespec="seconds")
         st["dex"][cid] = st["dex"].get(cid, 0) + 1
         _log_candy(st, {"t": _now(), "candy": cid, "target": target, "from": frm, "mins": 0})
         return c, 0
